@@ -1,4 +1,4 @@
-﻿open System
+open System
 open FSharp.Data
 open FSharpx.Collections
 
@@ -88,31 +88,59 @@ let extractApplicantInformation (row: MentorshipInformation.Row) =
         SlackName = row.``What is your fsharp.org slack name?``
         EmailAddress = row.``Email Address``
         AvailableScheduleForMentorship = extractApplicantSchedule row
-    }    
+    }
 
+let extractFsharpTopic (row: MentorshipInformation.Row) =
+    let convertCategoryNameToTopic categoryName =
+        if String.IsNullOrEmpty categoryName then None
+        else
+            match categoryName with
+            | "Introduction to F#" -> Some introduction
+            | "Deep dive into F#" -> Some deepDive
+            | "Contribute to an open source project" -> Some contributeToOSS
+            | "Machine learning" -> Some machineLearning
+            | "Contribute to the compiler" -> Some contributeToCompiler
+            | "I am up for anything"
+            | _ -> Some upForAnything
+
+    if String.IsNullOrEmpty row.``What topic do you want to learn?`` then
+        convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
+    else
+        convertCategoryNameToTopic row.``What topic do you want to learn?``
+        
 let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
+    let extractFsharpTopics (rows: MentorshipInformation.Row seq) =
+        let fsharpTopicsList = 
+            rows
+            |> Seq.map extractFsharpTopic
+            |> Seq.choose(fun x -> x)
+            |> List.ofSeq
+        NonEmptyList.create fsharpTopicsList.Head fsharpTopicsList.Tail
+
     let mentors =
-        (mentorshipDocument.Rows, fun row -> String.IsNullOrEmpty(row.``What topics do you feel comfortable mentoring?``) <> true)
-        ||> filterAndGroupApplicantsByNames
+        mentorshipDocument.Rows
+        |> Seq.filter (fun row -> String.IsNullOrEmpty(row.``What topics do you feel comfortable mentoring?``) <> true)
+        |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
         |> Seq.map(fun x -> 
             let multipleMentorEntries = snd x
-            let mentorData = Seq.head multipleMentorEntries 
-
+            let mentorData = Seq.head multipleMentorEntries
             { 
                 MentorInformation = extractApplicantInformation mentorData
                 SimultaneousMenteeCount = multipleMentorEntries |> Seq.length |> uint
-                AreasOfExpertise = 
+                AreasOfExpertise = extractFsharpTopics multipleMentorEntries
             }
         )
     
     let mentees =
-        (mentorshipDocument.Rows, fun row -> String.IsNullOrEmpty(row.``What topic do you want to learn?``) <> true)
-        ||> filterAndGroupApplicantsByNames
+        mentorshipDocument.Rows
+        |> Seq.filter (fun row -> String.IsNullOrEmpty(row.``What topic do you want to learn?``) <> true)
+        |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
         |> Seq.map(fun row ->
-            let multipleMenteeEntries = snd x
+            let multipleMenteeEntries = snd row
             let menteeData =  Seq.head multipleMenteeEntries
             {
                 MenteeInformation = extractApplicantInformation menteeData
+                TopicsOfInterest = extractFsharpTopics multipleMenteeEntries
             }
         )
 
@@ -121,10 +149,16 @@ let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
 
 [<EntryPoint>]
 let main argv =
-    MentorshipInformation.GetSample()
-    |> extractPeopleInformation
-    |> matchMentorToMentee
-    |> generateOrganizationEmail
-    |> outputMailToLinkInHtml
+    let peopleInformation = 
+        MentorshipInformation.GetSample() 
+        |> extractPeopleInformation
+        ||> Seq.iter2(fun mentor mentee -> 
+            printfn $"Mentor: {mentor.MentorInformation.Fullname} with {mentor.SimultaneousMenteeCount} students."
+            printfn $"Mentee: {mentee.MenteeInformation.Fullname} with {mentee.TopicsOfInterest.Length} interests."
+        )
+
+    ////|> matchMentorToMentee
+    ////|> generateOrganizationEmail
+    ////|> outputMailToLinkInHtml
 
     0 // return an integer exit code
