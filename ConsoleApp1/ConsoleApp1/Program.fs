@@ -75,10 +75,14 @@ let findTimeZone utcOffset =
 
 let extractApplicantSchedule (row: MentorshipInformation.Row) =
     // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
-    let normalizedUtcOffsetStringInput = row.``What is your time zone?``.Replace("UTC", "").Replace("+", "").Replace(" ", "")
-    let utcOffset = TimeSpan(Int32.Parse(normalizedUtcOffsetStringInput), 0, 0)
-    let applicantTimeZone = findTimeZone utcOffset
+    let utcOffset = 
+        if row.``What is your time zone?``.Equals "UTC" then
+            TimeSpan(0,0,0)
+        else
+            let normalizedUtcValue = row.``What is your time zone?``.Replace("UTC", "").Replace("+", "").Replace(" ", "")
+            TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
 
+    let applicantTimeZone = findTimeZone utcOffset
     let availableDay = { WeekDayName = "Wtv"; UtcHours = [] }
 
     { AvailableDays = NonEmptyList.create availableDay [] }
