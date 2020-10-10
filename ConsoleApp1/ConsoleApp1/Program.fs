@@ -86,7 +86,7 @@ let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan
 let findTimeZone utcOffset =
     TimeZoneInfo.GetSystemTimeZones()
     |> Seq.filter(fun x -> x.BaseUtcOffset = utcOffset && x.SupportsDaylightSavingTime = true)
-    |> Seq.head
+    |> Seq.head // Flaw of implementation and in the data. We only have UTC offset instead of time zones.
 
 let extractApplicantSchedule (row: MentorshipInformation.Row) =
     let convertAvailabilityIndexToTimeRange index =
@@ -123,7 +123,6 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
             let normalizedUtcValue = row.``What is your time zone?``.Replace("UTC", "").Replace("+", "").Replace(" ", "")
             TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
 
-    let applicantTimeZone = findTimeZone utcOffset
     let availableDays =
         [
             row.``What time are you available? [09:00 - 12:00 local time]``
@@ -138,7 +137,8 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
         |> List.groupBy(fun x -> x.WeekDayName)
         |> List.map(fun x -> 
             let utcHours =
-                (snd x)
+                x
+                |> snd
                 |> List.map(fun availableDay -> availableDay.UtcHours)
                 |> List.concat
 
@@ -226,6 +226,25 @@ let doScheduleOverlap (menteeSchedule: CalendarSchedule) (mentorSchedule: Calend
     (menteeAvailability, mentorAvailability)
     ||> List.exists2(fun menteeSchedule mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule)
 
+let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
+    let fromRarestToCommonExpertiseAreas = mentor.AreasOfExpertise |> NonEmptyList.toList |> List.sortByDescending(fun x -> x.PopularityWeight)
+
+    fromRarestToCommonExpertiseAreas
+    |> List.map(fun expertiseArea ->
+        mentees |> List.map(fun mentee -> 
+        let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
+        let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
+
+        if foundMatchingMentee then Some (expertiseArea, mentee) else None
+        )
+    )
+    |> List.concat
+    |> List.choose(fun x -> x)
+    |> List.sortByDescending(fun x -> (fst x).PopularityWeight)
+
+let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
+    
+
 let rec matchMenteeToMentor 
     (matches: ConfirmedMentorshipApplication list) 
     (mentees: Mentee list) 
@@ -235,23 +254,34 @@ let rec matchMenteeToMentor
     | ([], _) -> matches
     | (_, []) -> matches
     | (listOfMentees, listOfMentors) ->
-        let mentorshipMatches : ConfirmedMentorshipApplication list =
-            listOfMentors
-            |> List.map(fun mentor -> 
-                let potentialMentees =
-                    listOfMentees
-                    |> List.filter(fun mentee -> 
-                        let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
-                        let foundInterestOverlap = Enumerable.Intersect(mentee.TopicsOfInterest, mentor.AreasOfExpertise).Count() > 0
-                        foundInterestOverlap && foundScheduleOverlap
-                    )
-                ()
-            )
+        // TODO: Need predicate function to validate that there's at least one potential match possible before continuing.
+        // If so, then we exit and return available confirmed matches.
+        let atLeastOneMatchPossible = canMatchMentorToMentee listOfMentees listOfMentors
+        if noAvailableMatchPossible then
+            matches
+        else
+            let mentorshipMatches : ConfirmedMentorshipApplication list =
+                listOfMentors
+                |> List.map(fun mentor ->
+                    let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
+                    if menteeMatches.Length = 0 then None
+                    else
+                        let fsharpTopicAndMenteeTuple = menteeMatches.Head
+                        let matchedMentee = snd fsharpTopicAndMenteeTuple
+                        let fsharpTopic = fst fsharpTopicAndMenteeTuple
+                        Some {
+                            Mentee = matchedMentee
+                            Mentor = mentor 
+                            FsharpTopic = fsharpTopic
+                            MeetingTimes = generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
+                        }
+                )
+                |> List.choose(fun x -> x)
         
-        let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentor))
-        let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentee))
+            let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentor))
+            let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentee))
 
-        matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
+            matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
 
 [<EntryPoint>]
 let main argv =
