@@ -1,4 +1,4 @@
-open System
+﻿open System
 open FSharp.Data
 open FSharpx.Collections
 
@@ -74,8 +74,9 @@ let findTimeZone utcOffset =
     |> Seq.head
 
 let extractApplicantSchedule (row: MentorshipInformation.Row) =
-    // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ.S
-    let utcOffset = TimeSpan(Int32.Parse(row.``What is your time zone?``.Replace("UTC", "")), 0, 0)
+    // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
+    let normalizedUtcOffsetStringInput = row.``What is your time zone?``.Replace("UTC", "").Replace("+", "").Replace(" ", "")
+    let utcOffset = TimeSpan(Int32.Parse(normalizedUtcOffsetStringInput), 0, 0)
     let applicantTimeZone = findTimeZone utcOffset
 
     let availableDay = { WeekDayName = "Wtv"; UtcHours = [] }
