@@ -69,6 +69,32 @@ let findTimeZone utcOffset =
     |> Seq.head
 
 let extractApplicantSchedule (row: MentorshipInformation.Row) =
+    let convertAvailabilityIndexToTimeRange index =
+        match index with
+        | 0 -> Some (availableLocalTimeHoursForMentorship |> List.take 3)
+        | 1 -> Some (availableLocalTimeHoursForMentorship |> List.skip 3 |> List.take 3)
+        | 2 -> Some (availableLocalTimeHoursForMentorship |> List.skip 6 |> List.take 3)
+        | 3 -> Some (availableLocalTimeHoursForMentorship |> List.skip 9 |> List.take 3)
+        | 4 -> Some (availableLocalTimeHoursForMentorship |> List.skip 12 |> List.take 3)
+        | _ -> None
+
+    let convertDateAndTimeToAvailability weekDayAvailability availabilityIndex utcOffsetValue =
+        if String.IsNullOrEmpty weekDayAvailability then None
+        else
+            let optAvailabilityRange = convertAvailabilityIndexToTimeRange availabilityIndex
+            match optAvailabilityRange with
+            | None -> None
+            | Some availabilityRange ->
+                let availableRangeInUtc = availabilityRange |> List.map(fun x -> x.Add(utcOffsetValue))
+                if weekDayAvailability.Contains ',' <> true then
+                    Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
+                else
+                    weekDayAvailability.Split(',')
+                    |> List.ofArray
+                    |> List.map(fun x -> x.Replace(" ", ""))
+                    |> List.map(fun x -> { WeekDayName = x; UtcHours = availableRangeInUtc })
+                    |> Some
+
     // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
     let utcOffset = 
         if row.``What is your time zone?``.Equals "UTC" then
@@ -78,9 +104,31 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
             TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
 
     let applicantTimeZone = findTimeZone utcOffset
+    let availableDays =
+        [
+            row.``What time are you available? [09:00 - 12:00 local time]``
+            row.``What time are you available? [12:00 - 15:00 local time]``
+            row.``What time are you available? [15:00 - 18:00 local time]``
+            row.``What time are you available? [18:00 - 21:00 local time]``
+            row.``What time are you available? [21:00 - 00:00 local time]``
+        ]
+        |> List.mapi(fun idx dateAndTime -> convertDateAndTimeToAvailability dateAndTime idx utcOffset)
+        |> List.choose(fun x -> x)
+        |> List.concat
+        |> List.groupBy(fun x -> x.WeekDayName)
+        |> List.map(fun x -> 
+            let utcHours =
+                (snd x)
+                |> List.map(fun availableDay -> availableDay.UtcHours)
+                |> List.concat
+
+            { WeekDayName = fst x; UtcHours = utcHours }
+        )
+
+
     let availableDay = { WeekDayName = "Wtv"; UtcHours = [] }
 
-    { AvailableDays = NonEmptyList.create availableDay [] }
+    { AvailableDays = NonEmptyList.create availableDays.Head availableDays.Tail}
 
 let extractApplicantInformation (row: MentorshipInformation.Row) =
     { 
