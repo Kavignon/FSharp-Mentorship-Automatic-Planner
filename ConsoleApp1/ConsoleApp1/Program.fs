@@ -85,7 +85,7 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
             match optAvailabilityRange with
             | None -> None
             | Some availabilityRange ->
-                let availableRangeInUtc = availabilityRange |> List.map(fun x -> x.Add(utcOffsetValue))
+                let availableRangeInUtc = availabilityRange |> List.map(fun x -> x.Subtract(utcOffsetValue))
                 if weekDayAvailability.Contains ',' <> true then
                     Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
                 else
@@ -124,9 +124,6 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
 
             { WeekDayName = fst x; UtcHours = utcHours }
         )
-
-
-    let availableDay = { WeekDayName = "Wtv"; UtcHours = [] }
 
     { AvailableDays = NonEmptyList.create availableDays.Head availableDays.Tail}
 
