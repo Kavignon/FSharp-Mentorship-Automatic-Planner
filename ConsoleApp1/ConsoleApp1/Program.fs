@@ -63,13 +63,6 @@ let upForAnything = { Category = UpForAnything; PopularityWeight = Rare }
 
 let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
-let filterAndGroupApplicantsByNames 
-    (applicants: MentorshipInformation.Row seq) 
-    (predicate: MentorshipInformation.Row -> bool) =
-    applicants
-    |> Seq.filter predicate
-    |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
-
 let findTimeZone utcOffset =
     TimeZoneInfo.GetSystemTimeZones()
     |> Seq.filter(fun x -> x.BaseUtcOffset = utcOffset && x.SupportsDaylightSavingTime = true)
