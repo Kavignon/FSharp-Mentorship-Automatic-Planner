@@ -243,7 +243,8 @@ let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
     |> List.sortByDescending(fun x -> (fst x).PopularityWeight)
 
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    
+    // Missing consecutive logic for creating meeting times here
+    ()
 
 let rec matchMenteeToMentor 
     (matches: ConfirmedMentorshipApplication list) 
@@ -256,6 +257,7 @@ let rec matchMenteeToMentor
     | (listOfMentees, listOfMentors) ->
         // TODO: Need predicate function to validate that there's at least one potential match possible before continuing.
         // If so, then we exit and return available confirmed matches.
+        // canMatchMentorToMentee doesn't exist for now. It's a reminder for me not to forget!
         let atLeastOneMatchPossible = canMatchMentorToMentee listOfMentees listOfMentors
         if noAvailableMatchPossible then
             matches
@@ -278,8 +280,8 @@ let rec matchMenteeToMentor
                 )
                 |> List.choose(fun x -> x)
         
-            let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentor))
-            let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentee))
+            let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentor))
+            let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentee))
 
             matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
 
