@@ -1,4 +1,5 @@
-open System
+﻿open System
+open System.Linq
 open FSharp.Data
 open FSharpx.Collections
 
@@ -9,8 +10,22 @@ type DayAvailability = {
     UtcHours: TimeSpan list
 }
 
+let checkForAvailabilityMatch (mentorAvailability: DayAvailability) (menteeAvailability: DayAvailability) =
+    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && 
+    Enumerable.Intersect(menteeAvailability.UtcHours, mentorAvailability.UtcHours).Count() >= 2
+
 type CalendarSchedule = {
     AvailableDays: NonEmptyList<DayAvailability>
+}
+
+type TimeRange = {
+    UtcStartTime: TimeSpan
+    UtcEndTime: TimeSpan
+}
+
+type OverlapSchedule = {
+    Weekday: string
+    MatchPeriods: NonEmptyList<TimeRange>
 }
 
 type PersonInformation = {
@@ -31,9 +46,9 @@ type FSharpCategory =
 
 // Heuristic type used to associate a mentor which can help in more sought for topics such as Machine Learning.
 type PopularityHeuristic =
-    | Common
-    | Popular
-    | Rare
+    | Common = 3
+    | Popular = 5
+    | Rare = 10
 
 type FsharpTopic = {
     Category: FSharpCategory
@@ -51,15 +66,20 @@ type Mentee = {
     TopicsOfInterest: NonEmptyList<FsharpTopic>
 }
 
-type MentorshipMatches = Map<Mentor, NonEmptyList<Mentee>>
+type ConfirmedMentorshipApplication = {
+    Mentee: Mentee
+    Mentor: Mentor
+    FsharpTopic: FsharpTopic
+    MeetingTimes: NonEmptyList<OverlapSchedule>
+}
 
-let introduction = { Category = IntroductionToFSharp; PopularityWeight = Common }
-let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = Popular }
-let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = Popular }
-let webDevelopment = { Category = WebDevelopment; PopularityWeight = Popular }
-let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = Rare }
-let machineLearning = { Category = MachineLearning; PopularityWeight = Rare }
-let upForAnything = { Category = UpForAnything; PopularityWeight = Rare }
+let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityHeuristic.Common  }
+let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityHeuristic.Popular }
+let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityHeuristic.Popular }
+let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityHeuristic.Popular }
+let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityHeuristic.Rare }
+let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityHeuristic.Rare }
+let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityHeuristic.Rare }
 
 let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
@@ -164,6 +184,7 @@ let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
             rows
             |> Seq.map extractFsharpTopic
             |> Seq.choose(fun x -> x)
+            |> Seq.sortByDescending(fun x -> x.PopularityWeight)
             |> List.ofSeq
         NonEmptyList.create fsharpTopicsList.Head fsharpTopicsList.Tail
 
@@ -180,6 +201,7 @@ let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
                 AreasOfExpertise = extractFsharpTopics multipleMentorEntries
             }
         )
+        |> List.ofSeq
     
     let mentees =
         mentorshipDocument.Rows
@@ -193,26 +215,52 @@ let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
                 TopicsOfInterest = extractFsharpTopics multipleMenteeEntries
             }
         )
+        |> List.ofSeq
 
     (mentors, mentees)
+
+let doScheduleOverlap (menteeSchedule: CalendarSchedule) (mentorSchedule: CalendarSchedule) =
+    let menteeAvailability = menteeSchedule.AvailableDays |> NonEmptyList.toList
+    let mentorAvailability = mentorSchedule.AvailableDays |> NonEmptyList.toList
+
+    (menteeAvailability, mentorAvailability)
+    ||> List.exists2(fun menteeSchedule mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule)
+
+let rec matchMenteeToMentor 
+    (matches: ConfirmedMentorshipApplication list) 
+    (mentees: Mentee list) 
+    (mentors: Mentor list)
+    : ConfirmedMentorshipApplication list =
+    match(mentees, mentors) with
+    | ([], _) -> matches
+    | (_, []) -> matches
+    | (listOfMentees, listOfMentors) ->
+        let mentorshipMatches : ConfirmedMentorshipApplication list =
+            listOfMentors
+            |> List.map(fun mentor -> 
+                let potentialMentees =
+                    listOfMentees
+                    |> List.filter(fun mentee -> 
+                        let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
+                        let foundInterestOverlap = Enumerable.Intersect(mentee.TopicsOfInterest, mentor.AreasOfExpertise).Count() > 0
+                        foundInterestOverlap && foundScheduleOverlap
+                    )
+                ()
+            )
         
+        let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentor))
+        let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentee))
+
+        matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
 
 [<EntryPoint>]
 let main argv =
-
     // Don't forget to provide the current CSV document for the mentorship.
     // Please leave the CSV document out of the repository. It's been excluded in the git ignore.
     // Don 't commit the file in the repository.
 
-    let peopleInformation = 
-        MentorshipInformation.GetSample() 
-        |> extractPeopleInformation
-        ||> Seq.iter2(fun mentor mentee -> 
-            printfn $"Mentor: {mentor.MentorInformation.Fullname} with {mentor.SimultaneousMenteeCount} students."
-            printfn $"Mentee: {mentee.MenteeInformation.Fullname} with {mentee.TopicsOfInterest.Length} interests."
-        )
-
-    ////|> matchMentorToMentee
+    let (mentors, mentees) = extractPeopleInformation (MentorshipInformation.GetSample())
+    let mentorshipConfirmedMatchedApplicants = matchMenteeToMentor [] mentees mentors
     ////|> generateOrganizationEmail
     ////|> outputMailToLinkInHtml
 
