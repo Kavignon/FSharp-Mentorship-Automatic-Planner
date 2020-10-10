@@ -1,4 +1,4 @@
-﻿open System
+open System
 open FSharp.Data
 open FSharpx.Collections
 
@@ -24,6 +24,7 @@ type FSharpCategory =
     | IntroductionToFSharp
     | DeepDiveInFSharp
     | ContributeToOpenSource
+    | WebDevelopment
     | ContributeToCompiler
     | MachineLearning
     | UpForAnything
@@ -55,6 +56,7 @@ type MentorshipMatches = Map<Mentor, NonEmptyList<Mentee>>
 let introduction = { Category = IntroductionToFSharp; PopularityWeight = Common }
 let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = Popular }
 let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = Popular }
+let webDevelopment = { Category = WebDevelopment; PopularityWeight = Popular }
 let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = Rare }
 let machineLearning = { Category = MachineLearning; PopularityWeight = Rare }
 let upForAnything = { Category = UpForAnything; PopularityWeight = Rare }
@@ -105,6 +107,11 @@ let extractFsharpTopic (row: MentorshipInformation.Row) =
             | "Contribute to an open source project" -> Some contributeToOSS
             | "Machine learning" -> Some machineLearning
             | "Contribute to the compiler" -> Some contributeToCompiler
+            | "Web and SAFE stack"
+            | "Web programming/SAFE stack"
+            | "Fable/Elmish"
+            | "web development"
+            | "Web development" -> Some webDevelopment
             | "I am up for anything"
             | _ -> Some upForAnything
 
