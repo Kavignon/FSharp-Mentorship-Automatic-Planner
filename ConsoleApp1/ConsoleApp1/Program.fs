@@ -1,51 +1,22 @@
-﻿// Learn more about F# at http://fsharp.org
-
-open System
-open System.ComponentModel.DataAnnotations
-
+﻿open System
 open FSharp.Data
 open FSharpx.Collections
 
 type MentorshipInformation = CsvProvider<"Mentorship Application Fall Session 2020 (Responses).csv">
 
-type EmailCreationError =
-    | MissingOrEmptyInput
-    | EmailAddressInvalid of string
-with
-    member x.ErrorMessage =
-        match x with
-        | MissingOrEmptyInput -> "The input was either missing or empty. Please provide an email address for the customer."
-        | EmailAddressInvalid address -> $"The provided email address {address} was invalid. Please provide a valid email address."
-
-/// Abstract away the email contact information of a customer.
-type EmailAddress = private EmailContact of string
-with
-    static member Create addressInput =
-        if String.IsNullOrEmpty addressInput then
-            Error MissingOrEmptyInput
-        elif EmailAddressAttribute().IsValid(addressInput) <> true then
-            Error (EmailAddressInvalid $"The following email input isn't valid {addressInput}.")
-        else
-            Ok (EmailContact addressInput)
-
-    member x.Value =
-        match x with
-        | EmailContact emailAddress -> emailAddress
-
 type DayAvailability = {
     WeekDayName: string
-    LocalAvailableHours: int list
+    UtcHours: TimeSpan list
 }
 
 type CalendarSchedule = {
-    UtcOffset: string
     AvailableDays: NonEmptyList<DayAvailability>
 }
 
 type PersonInformation = {
     Fullname: string
     SlackName: string
-    EmailAddress: EmailAddress
+    EmailAddress: string
     AvailableScheduleForMentorship: CalendarSchedule
 }
 
@@ -76,7 +47,7 @@ type Mentor = {
 
 type Mentee = {
     MenteeInformation: PersonInformation
-    TopicOfInterest: FsharpTopic
+    TopicsOfInterest: NonEmptyList<FsharpTopic>
 }
 
 type MentorshipMatches = Map<Mentor, NonEmptyList<Mentee>>
@@ -88,11 +59,72 @@ let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight =
 let machineLearning = { Category = MachineLearning; PopularityWeight = Rare }
 let upForAnything = { Category = UpForAnything; PopularityWeight = Rare }
 
+let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
+let filterAndGroupApplicantsByNames 
+    (applicants: MentorshipInformation.Row seq) 
+    (predicate: MentorshipInformation.Row -> bool) =
+    applicants
+    |> Seq.filter predicate
+    |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
+
+let findTimeZone utcOffset =
+    TimeZoneInfo.GetSystemTimeZones()
+    |> Seq.filter(fun x -> x.BaseUtcOffset = utcOffset && x.SupportsDaylightSavingTime = true)
+    |> Seq.head
+
+let extractApplicantSchedule (row: MentorshipInformation.Row) =
+    // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ.S
+    let utcOffset = TimeSpan(Int32.Parse(row.``What is your time zone?``.Replace("UTC", "")), 0, 0)
+    let applicantTimeZone = findTimeZone utcOffset
+
+    let availableDay = { WeekDayName = "Wtv"; UtcHours = [] }
+
+    { AvailableDays = NonEmptyList.create availableDay [] }
+
+let extractApplicantInformation (row: MentorshipInformation.Row) =
+    { 
+        Fullname = row.``What is your full name (First and Last Name)``
+        SlackName = row.``What is your fsharp.org slack name?``
+        EmailAddress = row.``Email Address``
+        AvailableScheduleForMentorship = extractApplicantSchedule row
+    }    
+
+let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
+    let mentors =
+        (mentorshipDocument.Rows, fun row -> String.IsNullOrEmpty(row.``What topics do you feel comfortable mentoring?``) <> true)
+        ||> filterAndGroupApplicantsByNames
+        |> Seq.map(fun x -> 
+            let multipleMentorEntries = snd x
+            let mentorData = Seq.head multipleMentorEntries 
+
+            { 
+                MentorInformation = extractApplicantInformation mentorData
+                SimultaneousMenteeCount = multipleMentorEntries |> Seq.length |> uint
+                AreasOfExpertise = 
+            }
+        )
+    
+    let mentees =
+        (mentorshipDocument.Rows, fun row -> String.IsNullOrEmpty(row.``What topic do you want to learn?``) <> true)
+        ||> filterAndGroupApplicantsByNames
+        |> Seq.map(fun row ->
+            let multipleMenteeEntries = snd x
+            let menteeData =  Seq.head multipleMenteeEntries
+            {
+                MenteeInformation = extractApplicantInformation menteeData
+            }
+        )
+
+    (mentors, mentees)
+        
 
 [<EntryPoint>]
 let main argv =
-    let mentorshipData = new MentorshipInformation()
-    mentorshipData.Rows |> Seq.iteri(fun index row -> row. printfn $"#{index} - {row.``What is your time zone?``}")
+    MentorshipInformation.GetSample()
+    |> extractPeopleInformation
+    |> matchMentorToMentee
+    |> generateOrganizationEmail
+    |> outputMailToLinkInHtml
 
     0 // return an integer exit code
