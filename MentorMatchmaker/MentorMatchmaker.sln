@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30524.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.fsproj", "{CAC28310-1399-46E9-8C00-C02A9CDA2933}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MentorMatchmaker", "MentorMatchmaker\MentorMatchmaker.fsproj", "{CAC28310-1399-46E9-8C00-C02A9CDA2933}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
