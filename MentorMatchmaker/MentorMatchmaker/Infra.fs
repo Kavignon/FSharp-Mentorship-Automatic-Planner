@@ -8,7 +8,7 @@ open FSharpPlus.Data
 open Utilities
 
 
-type MentorshipInformation = CsvProvider<"data.csv">
+type MentorshipInformation = CsvProvider<"Mentorship Application Fall Session 2020 (Responses).csv">
 
 type DayAvailability = { WeekDayName: string; UtcHours: TimeSpan list }
 type CalendarSchedule = { AvailableDays: DayAvailability nel }
