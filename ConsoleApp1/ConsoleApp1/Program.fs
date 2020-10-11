@@ -270,12 +270,11 @@ let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
             let matchedMentee = snd fsharpTopicAndMenteeTuple
             let fsharpTopic = fst fsharpTopicAndMenteeTuple
             let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
-            Some {
-                Mentee = matchedMentee
-                Mentor = mentor
-                FsharpTopic = fsharpTopic
-                MeetingTimes = NonEmptyList.create matchingSchedule.Head matchingSchedule.Tail
-            }
+            Some
+                { Mentee = matchedMentee
+                  Mentor = mentor
+                  FsharpTopic = fsharpTopic
+                  MeetingTimes = NonEmptyList.ofList matchingSchedule }
     )
     |> List.choose(fun x -> x)
 
