@@ -7,7 +7,6 @@ open FSharpPlus.Data
 
 open Utilities
 
-
 type MentorshipInformation = CsvProvider<"Mentorship Application Fall Session 2020 (Responses).csv">
 
 type DayAvailability = { WeekDayName: string; UtcHours: TimeSpan list }
@@ -207,6 +206,6 @@ module private Impl =
 
 [<RequireQualifiedAccess>]
 module CsvExtractor =
-    let extract () =
-        MentorshipInformation.GetSample()
+    let extract (csvDocumentFilePath: string) =
+        MentorshipInformation.Load csvDocumentFilePath
         |> Impl.extractPeopleInformation
