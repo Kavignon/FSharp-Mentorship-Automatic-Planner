@@ -99,7 +99,7 @@ let canMatchMenteesWithMentors listOfMentors listOfMentees =
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
-    let rec matchMenteeToMentor
+    let rec matchMenteesWithMentors
         (matches: ConfirmedMentorshipApplication list)
         (mentees: Mentee list)
         (mentors: Mentor list)
@@ -121,4 +121,4 @@ module Matchmaking =
                 let currentMentors = getCurrentApplicants listOfMentors (fun x y -> x <> y.Mentor)
                 let currentMentees = getCurrentApplicants listOfMentees (fun x y -> x <> y.Mentee)
 
-                matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
+                matchMenteesWithMentors (matches @ mentorshipMatches) currentMentees currentMentors
