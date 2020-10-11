@@ -1,4 +1,4 @@
-open System
+﻿open System
 open System.Linq
 open FSharp.Data
 open FSharpx.Collections
@@ -240,7 +240,7 @@ let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
     )
     |> List.concat
     |> List.choose(fun x -> x)
-    |> List.sortByDescending(fun x -> (fst x).PopularityWeight)
+    |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
 
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
     let convertToListAndSortByName nonEmptyAvailableDays =
