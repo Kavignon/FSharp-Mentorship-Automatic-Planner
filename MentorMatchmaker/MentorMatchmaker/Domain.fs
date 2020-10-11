@@ -93,6 +93,20 @@ let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
     )
     |> List.chooseDefault
 
+let tryFindMatchingMenteeForMentorExpertise mentor mentees =
+    let menteeMatches = (mentor, mentees) ||> findMatchingMenteeForMentor
+    if menteeMatches.Length = 0 then None
+    else
+        let fsharpTopicAndMenteeTuple = menteeMatches.Head
+        let matchedMentee = snd fsharpTopicAndMenteeTuple
+        let fsharpTopic = fst fsharpTopicAndMenteeTuple
+        let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
+        Some
+            { Mentee = matchedMentee
+              Mentor = mentor
+              FsharpTopic = fsharpTopic
+              MeetingTimes = NonEmptyList.ofList matchingSchedule }
+
 let canMatchMenteesWithMentors listOfMentors listOfMentees =
     listOfMentors
     |> List.exists(fun mentor ->
@@ -102,6 +116,16 @@ let canMatchMenteesWithMentors listOfMentors listOfMentees =
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
+    let tryGenerateMentorshipConfirmedApplicantList (mentees: Mentee list) (mentors: Mentor list) =
+        let atLeastOneMatchPossible = canMatchMenteesWithMentors mentors mentees
+        if atLeastOneMatchPossible <> true then
+            None
+        else
+            mentors
+            |> List.map(fun mentor -> tryFindMatchingMenteeForMentorExpertise mentor mentees)
+            |> List.chooseDefault
+            |> Some
+
     let rec matchMenteesWithMentors
         (matches: ConfirmedMentorshipApplication list)
         (mentees: Mentee list)
@@ -117,7 +141,7 @@ module Matchmaking =
             else
                 let mentorshipMatches = findMentorMatchingMenteeInterest listOfMentors listOfMentees
                 let getCurrentApplicants applicants predicate = List.filter(fun x -> mentorshipMatches |> List.exists (fun y -> predicate x y)) applicants
-                let currentMentors = getCurrentApplicants listOfMentors (fun x y -> x.MentorInformation.Fullname = y.Mentor.MentorInformation.Fullname)
-                let currentMentees = getCurrentApplicants listOfMentees (fun x y -> x.MenteeInformation.Fullname = y.Mentee.MenteeInformation.Fullname)
+                let currentMentors = getCurrentApplicants listOfMentors (fun mentor confirmedApplicant -> mentor.MentorInformation.Fullname = confirmedApplicant.Mentor.MentorInformation.Fullname)
+                let currentMentees = getCurrentApplicants listOfMentees (fun mentee confirmedApplicant -> mentee.MenteeInformation.Fullname = confirmedApplicant.Mentee.MenteeInformation.Fullname)
 
                 matchMenteesWithMentors (matches @ mentorshipMatches) currentMentees currentMentors

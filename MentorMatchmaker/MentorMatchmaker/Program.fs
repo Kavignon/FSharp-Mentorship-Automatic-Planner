@@ -8,6 +8,7 @@ let main _ =
     // Please leave the CSV document out of the repository. It's been excluded in the git ignore.
     // Don 't commit the file in the repository.
     let (mentors, mentees) = CsvExtractor.extract()
+    let matches = Matchmaking.tryGenerateMentorshipConfirmedApplicantList mentees mentors
     Matchmaking.matchMenteesWithMentors [] mentees mentors
     |> printfn "%A"
     ////|> generateOrganizationEmail
