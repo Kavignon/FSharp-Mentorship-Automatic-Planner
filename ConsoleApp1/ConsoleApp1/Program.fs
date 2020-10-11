@@ -235,37 +235,37 @@ let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
         let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
         let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
 
-        if foundMatchingMentee then Some (expertiseArea, mentee) else None
+        if foundMatchingMentee then Some (expertiseArea, mentee) else None )
         )
-    )
     |> List.concat
     |> List.choose(fun x -> x)
     |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
 
-let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    let convertToListAndSortByName nonEmptyAvailableDays =
-        nonEmptyAvailableDays |> NonEmptyList.toList |> List.sortBy(fun x -> x.WeekDayName)
+let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay =
+    let sameAvailableHours = 
+        Enumerable.Intersect(menteeAvailableDay.UtcHours, mentorAvailableDay.UtcHours)
+        |> Seq.windowed 2
+        |> Seq.filter(fun arrayPair ->
+            let previousHour, currentHour = arrayPair.[0], arrayPair.[1]
+            (previousHour.Hours + 1) = currentHour.Hours //Looking for consecutive hours only
+        )
+        |> Seq.map(fun pair -> { UtcStartTime = pair.[0]; UtcEndTime = pair.[1] })
+        |> List.ofSeq
+    
+    if sameAvailableHours.Length = 0 then 
+        None
+    else 
+        Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
 
+let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
+    let convertToListAndSortByName nonEmptyAvailableDays = nonEmptyAvailableDays |> NonEmptyList.toList |> List.sortBy(fun x -> x.WeekDayName)
     let mentorAvailableDaysList = convertToListAndSortByName mentorSchedule.AvailableDays
     let menteeAvailableDaysList = convertToListAndSortByName menteeSchedule.AvailableDays
+    let tryToGenerateOverlappingSchedule mentorAvailableDay = List.map(fun menteeAvailableDay -> tryFindSameAvailableHoursForApplicants mentorAvailableDay menteeAvailableDay) menteeAvailableDaysList
 
-    (menteeAvailableDaysList, mentorAvailableDaysList)
-    ||> List.map2(fun menteeAvailableDay mentorAvailableDay ->
-        let sameAvailableHours = 
-            Enumerable.Intersect(menteeAvailableDay.UtcHours, mentorAvailableDay.UtcHours)
-            |> Seq.windowed 2
-            |> Seq.filter(fun arrayPair ->
-                let previousHour, currentHour = arrayPair.[0], arrayPair.[1]
-                (previousHour.Hours + 1) = currentHour.Hours //Looking for consecutive hours only
-            )
-            |> Seq.map(fun pair -> { UtcStartTime = pair.[0]; UtcEndTime = pair.[1] })
-            |> List.ofSeq
-
-        if sameAvailableHours.Length = 0 then 
-            None
-        else 
-            Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
-    )
+    mentorAvailableDaysList
+    |> List.map(fun mentorAvailableDay -> tryToGenerateOverlappingSchedule mentorAvailableDay)
+    |> List.concat
     |> List.choose(fun x -> x)
 
 let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
@@ -308,8 +308,8 @@ let rec matchMenteeToMentor
             matches
         else
             let mentorshipMatches = findMentorMatchingMenteeInterest listOfMentors listOfMentees
-            let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentor))
-            let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentee))
+            let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentor))
+            let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x = y.Mentee))
 
             matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
 
