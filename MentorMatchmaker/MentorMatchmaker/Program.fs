@@ -33,23 +33,27 @@ let main argv =
     // Please leave the CSV document out of the repository. It's been excluded in the git ignore.
     // Don 't commit the file in the repository.
     let run (parsedArguments: ParseResults<CliArgument>) =
-        let toolMode = parsedArguments.GetAllResults().Head
-        match toolMode with
-        | CreateMentorshipMatches(csvDocumentPath) ->
-            if String.IsNullOrEmpty csvDocumentPath then
-                Error InputMissing
-            elif File.Exists(csvDocumentPath) <> true then
-                Error (RelativePathDoesNotExists csvDocumentPath)
-            else
-                let (mentors, mentees) = CsvExtractor.extract csvDocumentPath
-                let optMentorshipMatches = Matchmaking.tryGenerateMentorshipConfirmedApplicantList mentees mentors
+        match parsedArguments.GetAllResults() with
+        | [] -> 
+            Error InputMissing
 
-                match optMentorshipMatches with
-                | None ->
-                    Error (NoMatchPossible csvDocumentPath)
+        | toolMode :: tail ->
+            match toolMode with
+            | CreateMentorshipMatches(csvDocumentPath) ->
+                if String.IsNullOrEmpty csvDocumentPath then
+                    Error InputMissing
+                elif File.Exists(csvDocumentPath) <> true then
+                    Error (RelativePathDoesNotExists csvDocumentPath)
+                else
+                    let (mentors, mentees) = CsvExtractor.extract csvDocumentPath
+                    let optMentorshipMatches = Matchmaking.tryGenerateMentorshipConfirmedApplicantList mentees mentors
+
+                    match optMentorshipMatches with
+                    | None ->
+                        Error (NoMatchPossible csvDocumentPath)
                 
-                | Some mentorshipMatches ->
-                    Ok mentorshipMatches
+                    | Some mentorshipMatches ->
+                        Ok mentorshipMatches
 
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
     let cliArgumentParser = ArgumentParser.Create<CliArgument>(checkStructure = false, errorHandler = errorHandler, programName = "Mentor matchmaker") // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
