@@ -3,37 +3,34 @@ open System.Linq
 open FSharp.Data
 open FSharpx.Collections
 
-type MentorshipInformation = CsvProvider<"Mentorship Application Fall Session 2020 (Responses).csv">
+type MentorshipInformation = CsvProvider<"data.csv">
 
-type DayAvailability = {
-    WeekDayName: string
-    UtcHours: TimeSpan list
-}
+type 'T nel = 'T NonEmptyList
+
+type DayAvailability =
+    { WeekDayName: string
+      UtcHours: TimeSpan list }
 
 let checkForAvailabilityMatch (mentorAvailability: DayAvailability) (menteeAvailability: DayAvailability) =
-    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && 
+    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) &&
     Enumerable.Intersect(menteeAvailability.UtcHours, mentorAvailability.UtcHours).Count() >= 2
 
-type CalendarSchedule = {
-    AvailableDays: NonEmptyList<DayAvailability>
-}
+type CalendarSchedule =
+    { AvailableDays: DayAvailability nel }
 
-type TimeRange = {
-    UtcStartTime: TimeSpan
-    UtcEndTime: TimeSpan
-}
+type TimeRange =
+    { UtcStartTime: TimeSpan
+      UtcEndTime: TimeSpan }
 
-type OverlapSchedule = {
-    Weekday: string
-    MatchPeriods: NonEmptyList<TimeRange>
-}
+type OverlapSchedule =
+    { Weekday: string
+      MatchPeriods: TimeRange nel }
 
-type PersonInformation = {
-    Fullname: string
-    SlackName: string
-    EmailAddress: string
-    AvailableScheduleForMentorship: CalendarSchedule
-}
+type PersonInformation =
+    { Fullname: string
+      SlackName: string
+      EmailAddress: string
+      AvailableScheduleForMentorship: CalendarSchedule }
 
 type FSharpCategory =
     | IntroductionToFSharp
@@ -45,41 +42,37 @@ type FSharpCategory =
     | UpForAnything
 
 // Heuristic type used to associate a mentor which can help in more sought for topics such as Machine Learning.
-type PopularityHeuristic =
+type PopularityWeight =
     | Common = 3
     | Popular = 5
     | Rare = 10
 
-type FsharpTopic = {
-    Category: FSharpCategory
-    PopularityWeight: PopularityHeuristic
-}
+type FsharpTopic =
+    { Category: FSharpCategory
+      PopularityWeight: PopularityWeight }
 
-type Mentor = {
-    MentorInformation: PersonInformation
-    AreasOfExpertise: NonEmptyList<FsharpTopic>
-    SimultaneousMenteeCount: uint
-}
+type Mentor =
+    { MentorInformation: PersonInformation
+      AreasOfExpertise: FsharpTopic nel
+      SimultaneousMenteeCount: uint }
 
-type Mentee = {
-    MenteeInformation: PersonInformation
-    TopicsOfInterest: NonEmptyList<FsharpTopic>
-}
+type Mentee =
+    { MenteeInformation: PersonInformation
+      TopicsOfInterest: FsharpTopic nel }
 
-type ConfirmedMentorshipApplication = {
-    Mentee: Mentee
-    Mentor: Mentor
-    FsharpTopic: FsharpTopic
-    MeetingTimes: NonEmptyList<OverlapSchedule>
-}
+type ConfirmedMentorshipApplication =
+    { Mentee: Mentee
+      Mentor: Mentor
+      FsharpTopic: FsharpTopic
+      MeetingTimes: OverlapSchedule nel }
 
-let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityHeuristic.Common  }
-let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityHeuristic.Popular }
-let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityHeuristic.Popular }
-let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityHeuristic.Popular }
-let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityHeuristic.Rare }
-let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityHeuristic.Rare }
-let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityHeuristic.Rare }
+let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
+let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
+let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityWeight.Popular }
+let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityWeight.Popular }
+let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityWeight.Rare }
+let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityWeight.Rare }
+let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWeight.Rare }
 
 let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
@@ -116,7 +109,7 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
                     |> Some
 
     // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
-    let utcOffset = 
+    let utcOffset =
         if row.``What is your time zone?``.Equals "UTC" then
             TimeSpan(0,0,0)
         else
@@ -135,7 +128,7 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
         |> List.choose(fun x -> x)
         |> List.concat
         |> List.groupBy(fun x -> x.WeekDayName)
-        |> List.map(fun x -> 
+        |> List.map(fun x ->
             let utcHours =
                 x
                 |> snd
@@ -148,12 +141,10 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
     { AvailableDays = NonEmptyList.create availableDays.Head availableDays.Tail}
 
 let extractApplicantInformation (row: MentorshipInformation.Row) =
-    { 
-        Fullname = row.``What is your full name (First and Last Name)``
-        SlackName = row.``What is your fsharp.org slack name?``
-        EmailAddress = row.``Email Address``
-        AvailableScheduleForMentorship = extractApplicantSchedule row
-    }
+    { Fullname = row.``What is your full name (First and Last Name)``
+      SlackName = row.``What is your fsharp.org slack name?``
+      EmailAddress = row.``Email Address``
+      AvailableScheduleForMentorship = extractApplicantSchedule row }
 
 let extractFsharpTopic (row: MentorshipInformation.Row) =
     let convertCategoryNameToTopic categoryName =
@@ -177,53 +168,47 @@ let extractFsharpTopic (row: MentorshipInformation.Row) =
         convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
     else
         convertCategoryNameToTopic row.``What topic do you want to learn?``
-        
+
 let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
     let extractFsharpTopics (rows: MentorshipInformation.Row seq) =
-        let fsharpTopicsList = 
-            rows
-            |> Seq.map extractFsharpTopic
-            |> Seq.choose(fun x -> x)
-            |> Seq.sortByDescending(fun x -> x.PopularityWeight)
-            |> List.ofSeq
-        NonEmptyList.create fsharpTopicsList.Head fsharpTopicsList.Tail
+        rows
+        |> List.ofSeq
+        |> List.map extractFsharpTopic
+        |> List.choose(fun x -> x)
+        |> List.sortByDescending(fun x -> x.PopularityWeight)
+        |> NonEmptyList.ofList
 
     let mentors =
         mentorshipDocument.Rows
-        |> Seq.filter (fun row -> String.IsNullOrEmpty(row.``What topics do you feel comfortable mentoring?``) <> true)
-        |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
-        |> Seq.map(fun x -> 
-            let multipleMentorEntries = snd x
-            let mentorData = Seq.head multipleMentorEntries
-            { 
-                MentorInformation = extractApplicantInformation mentorData
-                SimultaneousMenteeCount = multipleMentorEntries |> Seq.length |> uint
-                AreasOfExpertise = extractFsharpTopics multipleMentorEntries
-            }
-        )
         |> List.ofSeq
-    
+        |> List.filter (fun row -> String.IsNullOrEmpty(row.``What topics do you feel comfortable mentoring?``) <> true)
+        |> List.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
+        |> List.map(fun x ->
+            let multipleMentorEntries = snd x
+            let mentorData = List.head multipleMentorEntries
+            { MentorInformation = extractApplicantInformation mentorData
+              SimultaneousMenteeCount = multipleMentorEntries |> Seq.length |> uint
+              AreasOfExpertise = extractFsharpTopics multipleMentorEntries })
+
     let mentees =
         mentorshipDocument.Rows
-        |> Seq.filter (fun row -> String.IsNullOrEmpty(row.``What topic do you want to learn?``) <> true)
-        |> Seq.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
-        |> Seq.map(fun row ->
-            let multipleMenteeEntries = snd row
-            let menteeData =  Seq.head multipleMenteeEntries
-            {
-                MenteeInformation = extractApplicantInformation menteeData
-                TopicsOfInterest = extractFsharpTopics multipleMenteeEntries
-            }
-        )
         |> List.ofSeq
+        |> List.filter (fun row -> String.IsNullOrEmpty(row.``What topic do you want to learn?``) <> true)
+        |> List.groupBy(fun row -> row.``What is your full name (First and Last Name)``)
+        |> List.map(fun row ->
+            let multipleMenteeEntries = snd row
+            let menteeData = List.head multipleMenteeEntries
+            { MenteeInformation = extractApplicantInformation menteeData
+              TopicsOfInterest = extractFsharpTopics multipleMenteeEntries })
 
     (mentors, mentees)
 
 let doScheduleOverlap (menteeSchedule: CalendarSchedule) (mentorSchedule: CalendarSchedule) =
     let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
     let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
-    let isThereAnAvailabilityBetweenApplicants menteeSchedule = List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
-    
+    let isThereAnAvailabilityBetweenApplicants menteeSchedule =
+        List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
+
     List.exists(fun menteeSchedule -> isThereAnAvailabilityBetweenApplicants menteeSchedule) menteeAvailabilities
 
 let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
@@ -231,40 +216,47 @@ let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
 
     fromRarestToCommonExpertiseAreas
     |> List.map(fun expertiseArea ->
-        mentees |> List.map(fun mentee -> 
+        mentees |> List.map(fun mentee ->
         let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
         let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
 
-        if foundMatchingMentee then Some (expertiseArea, mentee) else None
-        )
+        if foundMatchingMentee
+        then Some (expertiseArea, mentee)
+        else None)
     )
     |> List.concat
     |> List.choose(fun x -> x)
     |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
 
-let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    let convertToListAndSortByName nonEmptyAvailableDays =
-        nonEmptyAvailableDays |> NonEmptyList.toList |> List.sortBy(fun x -> x.WeekDayName)
+module List =
+    let intersect (a: _ list) (b: _ list) = Enumerable.Intersect(a, b) |> List.ofSeq
 
-    let mentorAvailableDaysList = convertToListAndSortByName mentorSchedule.AvailableDays
-    let menteeAvailableDaysList = convertToListAndSortByName menteeSchedule.AvailableDays
+    let toConsecutivePairs (l: _ list) =
+        l
+        |> List.windowed 2
+        |> List.map(fun arrayPair -> (arrayPair.[0], arrayPair.[1]))
+
+let generateMeetingTimes mentorSchedule menteeSchedule =
+    let sortByWeekDayName nonEmptyAvailableDays =
+        nonEmptyAvailableDays
+        |> NonEmptyList.toList
+        |> List.sortBy(fun x -> x.WeekDayName)
+
+    let mentorAvailableDaysList = sortByWeekDayName mentorSchedule.AvailableDays
+    let menteeAvailableDaysList = sortByWeekDayName menteeSchedule.AvailableDays
 
     (menteeAvailableDaysList, mentorAvailableDaysList)
     ||> List.map2(fun menteeAvailableDay mentorAvailableDay ->
-        let sameAvailableHours = 
-            Enumerable.Intersect(menteeAvailableDay.UtcHours, mentorAvailableDay.UtcHours)
-            |> Seq.windowed 2
-            |> Seq.filter(fun arrayPair ->
-                let previousHour, currentHour = arrayPair.[0], arrayPair.[1]
-                (previousHour.Hours + 1) = currentHour.Hours //Looking for consecutive hours only
-            )
-            |> Seq.map(fun pair -> { UtcStartTime = pair.[0]; UtcEndTime = pair.[1] })
-            |> List.ofSeq
+        let sameAvailableHours =
+            List.intersect menteeAvailableDay.UtcHours mentorAvailableDay.UtcHours
+            |> List.toConsecutivePairs
+            |> List.filter(fun (previousHour, currentHour) -> previousHour.Hours + 1 = currentHour.Hours)
+            |> List.map(fun (previousHour, currentHour) -> { UtcStartTime = previousHour; UtcEndTime = currentHour })
 
-        if sameAvailableHours.Length = 0 then 
+        if sameAvailableHours.Length = 0 then
             None
-        else 
-            Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+        else
+            Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.ofList sameAvailableHours }
     )
     |> List.choose(fun x -> x)
 
@@ -280,7 +272,7 @@ let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
             let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
             Some {
                 Mentee = matchedMentee
-                Mentor = mentor 
+                Mentor = mentor
                 FsharpTopic = fsharpTopic
                 MeetingTimes = NonEmptyList.create matchingSchedule.Head matchingSchedule.Tail
             }
@@ -294,9 +286,9 @@ let canMatchMentorToMentee listOfMentors listOfMentees =
         menteeMatches.Length > 0
     )
 
-let rec matchMenteeToMentor 
-    (matches: ConfirmedMentorshipApplication list) 
-    (mentees: Mentee list) 
+let rec matchMenteeToMentor
+    (matches: ConfirmedMentorshipApplication list)
+    (mentees: Mentee list)
     (mentors: Mentor list)
     : ConfirmedMentorshipApplication list =
     match(mentees, mentors) with
