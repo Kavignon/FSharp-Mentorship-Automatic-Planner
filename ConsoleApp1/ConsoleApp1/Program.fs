@@ -1,4 +1,4 @@
-﻿open System
+open System
 open System.Linq
 open FSharp.Data
 open FSharpx.Collections
@@ -220,11 +220,11 @@ let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
     (mentors, mentees)
 
 let doScheduleOverlap (menteeSchedule: CalendarSchedule) (mentorSchedule: CalendarSchedule) =
-    let menteeAvailability = menteeSchedule.AvailableDays |> NonEmptyList.toList
-    let mentorAvailability = mentorSchedule.AvailableDays |> NonEmptyList.toList
-
-    (menteeAvailability, mentorAvailability)
-    ||> List.exists2(fun menteeSchedule mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule)
+    let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
+    let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
+    let isThereAnAvailabilityBetweenApplicants menteeSchedule = List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
+    
+    List.exists(fun menteeSchedule -> isThereAnAvailabilityBetweenApplicants menteeSchedule) menteeAvailabilities
 
 let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
     let fromRarestToCommonExpertiseAreas = mentor.AreasOfExpertise |> NonEmptyList.toList |> List.sortByDescending(fun x -> x.PopularityWeight)
