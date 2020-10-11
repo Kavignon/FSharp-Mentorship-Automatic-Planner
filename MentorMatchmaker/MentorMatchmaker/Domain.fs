@@ -1,13 +1,12 @@
 ﻿module MentorMatchmaker.Domain
 
-
 open System
 open System.Linq
 
 open FSharpPlus.Data
 
 open Utilities
-open MentorMatchmaker.Infra
+open Infra
 
 let checkForAvailabilityMatch (mentorAvailability: DayAvailability) (menteeAvailability: DayAvailability) =
     mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) &&
