@@ -261,8 +261,12 @@ let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: Cal
             |> Seq.map(fun pair -> { UtcStartTime = pair.[0]; UtcEndTime = pair.[1] })
             |> List.ofSeq
 
-        { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+        if sameAvailableHours.Length = 0 then 
+            None
+        else 
+            Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
     )
+    |> List.choose(fun x -> x)
 
 let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
     listOfMentors
