@@ -7,6 +7,7 @@
 *.userosscache
 *.sln.docstates
 *.csv
+!mentorship_schema_file.csv
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
