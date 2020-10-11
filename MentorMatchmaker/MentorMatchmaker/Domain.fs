@@ -1,6 +1,5 @@
 ﻿module MentorMatchmaker.Domain
 
-open System
 open System.Linq
 
 open FSharpPlus.Data
@@ -8,17 +7,11 @@ open FSharpPlus.Data
 open Infra
 open Utilities
 
-
 let checkForAvailabilityMatch mentorAvailability menteeAvailability =
     let anyCommonSlot =
         List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
-        |> List.length >= 2
+        |> List.length >= 3
     mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && anyCommonSlot
-
-let findTimeZone utcOffset =
-    TimeZoneInfo.GetSystemTimeZones()
-    |> Seq.filter(fun x -> x.BaseUtcOffset = utcOffset && x.SupportsDaylightSavingTime = true)
-    |> Seq.head // Flaw of implementation and in the data. We only have UTC offset instead of time zones.
 
 let doScheduleOverlap menteeSchedule mentorSchedule =
     let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
