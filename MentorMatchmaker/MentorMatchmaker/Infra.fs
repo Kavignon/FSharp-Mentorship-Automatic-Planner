@@ -57,6 +57,11 @@ type ConfirmedMentorshipApplication =
 module private Impl =
     let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
+    let splitStringAndRemoveDelimiters (stringInput: string) =
+        stringInput.Split(',')
+        |> List.ofArray
+        |> List.map(fun x -> x.Replace(" ", ""))
+
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
             match index with
@@ -78,9 +83,8 @@ module private Impl =
                     if weekDayAvailability.Contains(',') <> true then
                         Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
                     else
-                        weekDayAvailability.Split(',')
-                        |> List.ofArray
-                        |> List.map(fun x -> x.Replace(" ", ""))
+                        weekDayAvailability
+                        |> splitStringAndRemoveDelimiters
                         |> List.map(fun x -> { WeekDayName = x; UtcHours = availableRangeInUtc })
                         |> Some
 
@@ -136,9 +140,8 @@ module private Impl =
 
     let extractFsharpTopic (row: MentorshipInformation.Row) =
         let convertCategoryNameToTopic categoryName =
-            if String.IsNullOrEmpty categoryName then None
-            else
-                match categoryName with
+            let matchOnStringCategory stringCategory =
+                match stringCategory with
                 | "Introduction to F#" -> Some introduction
                 | "Deep dive into F#" -> Some deepDive
                 | "Contribute to an open source project" -> Some contributeToOSS
@@ -152,6 +155,16 @@ module private Impl =
                 | "I am up for anything"
                 | _ -> Some upForAnything
 
+            if String.IsNullOrEmpty categoryName then None
+            elif categoryName.Contains(',') <> true then
+               Some [ matchOnStringCategory categoryName ]
+            else
+                categoryName.Split(',')
+                |> List.ofArray
+                |> List.map(fun x -> if x.[0] = ' ' then x.Substring(1) else x)
+                |> List.map(fun x -> matchOnStringCategory x)
+                |> Some
+
         if String.IsNullOrEmpty row.``What topic do you want to learn?`` then
             convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
         else
@@ -162,6 +175,8 @@ module private Impl =
             rows
             |> List.ofSeq
             |> List.map extractFsharpTopic
+            |> List.chooseDefault
+            |> List.concat
             |> List.chooseDefault
             |> List.sortByDescending(fun x -> x.PopularityWeight)
             |> NonEmptyList.ofList
