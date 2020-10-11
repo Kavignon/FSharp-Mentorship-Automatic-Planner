@@ -19,7 +19,7 @@ type PersonInformation =
     { Fullname: string
       SlackName: string
       EmailAddress: string
-      AvailableScheduleForMentorship: CalendarSchedule }
+      MentorshipSchedule: CalendarSchedule }
 
 type FSharpCategory =
     | IntroductionToFSharp
@@ -75,7 +75,7 @@ module private Impl =
                 | None -> None
                 | Some availabilityRange ->
                     let availableRangeInUtc = availabilityRange |> List.map(fun x -> x.Subtract(utcOffsetValue))
-                    if weekDayAvailability.Contains ',' <> true then
+                    if weekDayAvailability.Contains(',') <> true then
                         Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
                     else
                         weekDayAvailability.Split(',')
@@ -86,10 +86,14 @@ module private Impl =
 
         // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
         let utcOffset =
-            if row.``What is your time zone?``.Equals "UTC" then
-                TimeSpan(0,0,0)
+            if row.``What is your time zone?``.Equals("UTC") then
+                TimeSpan(0, 0, 0)
             else
-                let normalizedUtcValue = row.``What is your time zone?``.Replace("UTC", "").Replace("+", "").Replace(" ", "")
+                let normalizedUtcValue =
+                    row.``What is your time zone?``
+                        .Replace("UTC", "")
+                        .Replace("+", "")
+                        .Replace(" ", "")
                 TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
 
         let availableDays =
@@ -104,14 +108,13 @@ module private Impl =
             |> List.chooseDefault
             |> List.concat
             |> List.groupBy(fun x -> x.WeekDayName)
-            |> List.map(fun x ->
+            |> List.map(fun (weekDayName, dayAvailabilities) ->
                 let utcHours =
-                    x
-                    |> snd
+                    dayAvailabilities
                     |> List.map(fun availableDay -> availableDay.UtcHours)
                     |> List.concat
 
-                { WeekDayName = fst x; UtcHours = utcHours }
+                { WeekDayName = weekDayName; UtcHours = utcHours }
             )
 
         { AvailableDays = NonEmptyList.ofList availableDays }
@@ -121,7 +124,7 @@ module private Impl =
         { Fullname = row.``What is your full name (First and Last Name)``
           SlackName = row.``What is your fsharp.org slack name?``
           EmailAddress = row.``Email Address``
-          AvailableScheduleForMentorship = extractApplicantSchedule row }
+          MentorshipSchedule = extractApplicantSchedule row }
 
     let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
     let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
@@ -189,4 +192,6 @@ module private Impl =
 
 [<RequireQualifiedAccess>]
 module CsvExtractor =
-    let extract () = MentorshipInformation.GetSample() |> Impl.extractPeopleInformation
+    let extract () =
+        MentorshipInformation.GetSample()
+        |> Impl.extractPeopleInformation

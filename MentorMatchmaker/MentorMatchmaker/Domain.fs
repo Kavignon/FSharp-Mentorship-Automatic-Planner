@@ -5,33 +5,39 @@ open System.Linq
 
 open FSharpPlus.Data
 
-open Utilities
 open Infra
+open Utilities
 
-let checkForAvailabilityMatch (mentorAvailability: DayAvailability) (menteeAvailability: DayAvailability) =
-    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) &&
-    Enumerable.Intersect(menteeAvailability.UtcHours, mentorAvailability.UtcHours).Count() >= 2
+
+let checkForAvailabilityMatch mentorAvailability menteeAvailability =
+    let anyCommonSlot =
+        List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
+        |> List.length >= 2
+    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && anyCommonSlot
 
 let findTimeZone utcOffset =
     TimeZoneInfo.GetSystemTimeZones()
     |> Seq.filter(fun x -> x.BaseUtcOffset = utcOffset && x.SupportsDaylightSavingTime = true)
     |> Seq.head // Flaw of implementation and in the data. We only have UTC offset instead of time zones.
 
-let doScheduleOverlap (menteeSchedule: CalendarSchedule) (mentorSchedule: CalendarSchedule) =
+let doScheduleOverlap menteeSchedule mentorSchedule =
     let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
     let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
-    let isThereAnAvailabilityBetweenApplicants menteeSchedule =
+    let anySlotBetweenApplicants menteeSchedule =
         List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
 
-    List.exists(fun menteeSchedule -> isThereAnAvailabilityBetweenApplicants menteeSchedule) menteeAvailabilities
+    List.exists(fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule) menteeAvailabilities
 
 let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
-    let fromRarestToCommonExpertiseAreas = mentor.AreasOfExpertise |> NonEmptyList.toList |> List.sortByDescending(fun x -> x.PopularityWeight)
+    let fromRarestToCommonExpertiseAreas =
+        mentor.AreasOfExpertise
+        |> NonEmptyList.toList
+        |> List.sortByDescending(fun x -> x.PopularityWeight)
 
     fromRarestToCommonExpertiseAreas
     |> List.map(fun expertiseArea ->
         mentees |> List.map(fun mentee ->
-        let foundScheduleOverlap = (mentee.MenteeInformation.AvailableScheduleForMentorship, mentor.MentorInformation.AvailableScheduleForMentorship) ||> doScheduleOverlap
+        let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule) ||> doScheduleOverlap
         let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
 
         if foundMatchingMentee
@@ -75,7 +81,7 @@ let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
             let fsharpTopicAndMenteeTuple = menteeMatches.Head
             let matchedMentee = snd fsharpTopicAndMenteeTuple
             let fsharpTopic = fst fsharpTopicAndMenteeTuple
-            let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
+            let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
             Some
                 { Mentee = matchedMentee
                   Mentor = mentor
@@ -107,7 +113,12 @@ module Matchmaking =
                 matches
             else
                 let mentorshipMatches = findMentorMatchingMenteeInterest listOfMentors listOfMentees
-                let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentor))
-                let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentee))
+
+                let getCurrentApplicants applicants predicate =
+                    applicants
+                    |> List.filter(fun x -> mentorshipMatches |> List.exists (fun y -> predicate x y))
+
+                let currentMentors = getCurrentApplicants listOfMentors (fun x y -> x <> y.Mentor)
+                let currentMentees = getCurrentApplicants listOfMentees (fun x y -> x <> y.Mentee)
 
                 matchMenteeToMentor (matches @ mentorshipMatches) currentMentees currentMentors
