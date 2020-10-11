@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30524.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MentorshipMatchmaker", "MentorshipMatchmaker\MentorshipMatchmaker.fsproj", "{CAC28310-1399-46E9-8C00-C02A9CDA2933}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "External Files", "External Files", "{EF09F9CC-08C7-41F1-A9FC-7D44E8A3CEDF}"
+ProjectSection(SolutionItems) = preProject
+	..\.gitignore = ..\.gitignore
+	..\LICENSE = ..\LICENSE
+	..\README.md = ..\README.md
+EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MentorshipMatchmaker.Tests", "MentorshipMatchmaker.Tests\MentorshipMatchmaker.Tests.fsproj", "{676FF523-A279-4F5E-BE7C-9C15171F23FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CAC28310-1399-46E9-8C00-C02A9CDA2933}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAC28310-1399-46E9-8C00-C02A9CDA2933}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAC28310-1399-46E9-8C00-C02A9CDA2933}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAC28310-1399-46E9-8C00-C02A9CDA2933}.Release|Any CPU.Build.0 = Release|Any CPU
+		{676FF523-A279-4F5E-BE7C-9C15171F23FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{676FF523-A279-4F5E-BE7C-9C15171F23FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{676FF523-A279-4F5E-BE7C-9C15171F23FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{676FF523-A279-4F5E-BE7C-9C15171F23FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FBDA102B-28CF-450A-9080-F90E62BC4E00}
+	EndGlobalSection
+EndGlobal
