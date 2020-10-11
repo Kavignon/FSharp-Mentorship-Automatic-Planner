@@ -138,7 +138,7 @@ let extractApplicantSchedule (row: MentorshipInformation.Row) =
             { WeekDayName = fst x; UtcHours = utcHours }
         )
 
-    { AvailableDays = NonEmptyList.create availableDays.Head availableDays.Tail}
+    { AvailableDays = NonEmptyList.ofList availableDays }
 
 let extractApplicantInformation (row: MentorshipInformation.Row) =
     { Fullname = row.``What is your full name (First and Last Name)``
