@@ -243,8 +243,52 @@ let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
     |> List.sortByDescending(fun x -> (fst x).PopularityWeight)
 
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    // Missing consecutive logic for creating meeting times here
-    ()
+    let convertToListAndSortByName nonEmptyAvailableDays =
+        nonEmptyAvailableDays |> NonEmptyList.toList |> List.sortBy(fun x -> x.WeekDayName)
+
+    let mentorAvailableDaysList = convertToListAndSortByName mentorSchedule.AvailableDays
+    let menteeAvailableDaysList = convertToListAndSortByName menteeSchedule.AvailableDays
+
+    (menteeAvailableDaysList, mentorAvailableDaysList)
+    ||> List.map2(fun menteeAvailableDay mentorAvailableDay ->
+        let sameAvailableHours = 
+            Enumerable.Intersect(menteeAvailableDay.UtcHours, mentorAvailableDay.UtcHours)
+            |> Seq.windowed 2
+            |> Seq.filter(fun arrayPair ->
+                let previousHour, currentHour = arrayPair.[0], arrayPair.[1]
+                (previousHour.Hours + 1) = currentHour.Hours //Looking for consecutive hours only
+            )
+            |> Seq.map(fun pair -> { UtcStartTime = pair.[0]; UtcEndTime = pair.[1] })
+            |> List.ofSeq
+
+        { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+    )
+
+let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
+    listOfMentors
+    |> List.map(fun mentor ->
+        let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
+        if menteeMatches.Length = 0 then None
+        else
+            let fsharpTopicAndMenteeTuple = menteeMatches.Head
+            let matchedMentee = snd fsharpTopicAndMenteeTuple
+            let fsharpTopic = fst fsharpTopicAndMenteeTuple
+            let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
+            Some {
+                Mentee = matchedMentee
+                Mentor = mentor 
+                FsharpTopic = fsharpTopic
+                MeetingTimes = NonEmptyList.create matchingSchedule.Head matchingSchedule.Tail
+            }
+    )
+    |> List.choose(fun x -> x)
+
+let canMatchMentorToMentee listOfMentors listOfMentees =
+    listOfMentors
+    |> List.exists(fun mentor ->
+        let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
+        menteeMatches.Length > 0
+    )
 
 let rec matchMenteeToMentor 
     (matches: ConfirmedMentorshipApplication list) 
@@ -255,31 +299,11 @@ let rec matchMenteeToMentor
     | ([], _) -> matches
     | (_, []) -> matches
     | (listOfMentees, listOfMentors) ->
-        // TODO: Need predicate function to validate that there's at least one potential match possible before continuing.
-        // If so, then we exit and return available confirmed matches.
-        // canMatchMentorToMentee doesn't exist for now. It's a reminder for me not to forget!
-        let atLeastOneMatchPossible = canMatchMentorToMentee listOfMentees listOfMentors
-        if noAvailableMatchPossible then
+        let atLeastOneMatchPossible = canMatchMentorToMentee listOfMentors listOfMentees
+        if atLeastOneMatchPossible <> true then
             matches
         else
-            let mentorshipMatches : ConfirmedMentorshipApplication list =
-                listOfMentors
-                |> List.map(fun mentor ->
-                    let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
-                    if menteeMatches.Length = 0 then None
-                    else
-                        let fsharpTopicAndMenteeTuple = menteeMatches.Head
-                        let matchedMentee = snd fsharpTopicAndMenteeTuple
-                        let fsharpTopic = fst fsharpTopicAndMenteeTuple
-                        Some {
-                            Mentee = matchedMentee
-                            Mentor = mentor 
-                            FsharpTopic = fsharpTopic
-                            MeetingTimes = generateMeetingTimes matchedMentee.MenteeInformation.AvailableScheduleForMentorship mentor.MentorInformation.AvailableScheduleForMentorship
-                        }
-                )
-                |> List.choose(fun x -> x)
-        
+            let mentorshipMatches = findMentorMatchingMenteeInterest listOfMentors listOfMentees
             let currentMentors = listOfMentors |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentor))
             let currentMentees = listOfMentees |> List.filter(fun x -> mentorshipMatches |> List.exists(fun y -> x <> y.Mentee))
 
@@ -290,7 +314,6 @@ let main argv =
     // Don't forget to provide the current CSV document for the mentorship.
     // Please leave the CSV document out of the repository. It's been excluded in the git ignore.
     // Don 't commit the file in the repository.
-
     let (mentors, mentees) = extractPeopleInformation (MentorshipInformation.GetSample())
     let mentorshipConfirmedMatchedApplicants = matchMenteeToMentor [] mentees mentors
     ////|> generateOrganizationEmail
