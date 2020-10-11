@@ -9,7 +9,7 @@ let main _ =
     // Don 't commit the file in the repository.
     let (mentors, mentees) = CsvExtractor.extract()
     Matchmaking.matchMenteesWithMentors [] mentees mentors
-    |> ignore
+    |> printfn "%A"
     ////|> generateOrganizationEmail
     ////|> outputMailToLinkInHtml
 
