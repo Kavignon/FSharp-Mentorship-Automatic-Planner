@@ -128,5 +128,5 @@ module Matchmaking =
             ||> findAllPotentialMentorshipMatches
             |> createUniqueMentorshipMatches Map.empty Set.empty
             |> Map.map(fun _ confirmedMatches -> confirmedMatches)
-            |> List.concat
+            |> Map.toList
             |> Some
