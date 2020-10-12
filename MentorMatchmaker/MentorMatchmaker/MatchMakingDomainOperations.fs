@@ -1,4 +1,4 @@
-module MentorMatchmaker.DomainOperations
+﻿module MentorMatchmaker.DomainOperations
 
 open System.Linq
 
@@ -128,6 +128,8 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
+    open System.IO
+
     let tryGenerateMentorshipConfirmedApplicantList (mentees: Mentee list) (mentors: Mentor list) =
         let atLeastOneMatchPossible = canMatchMenteesWithMentors mentors mentees
         if atLeastOneMatchPossible <> true then
@@ -139,3 +141,27 @@ module Matchmaking =
             |> Map.map(fun _ confirmedMatches -> confirmedMatches)
             |> Map.toList
             |> Some
+
+    let dumpMatchingToFile (confirmedApplications: ConfirmedMentorshipApplication list) =
+        let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
+            meetingTimes
+            |> NonEmptyList.map(fun meetingDay ->
+                let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $"-{currentTime.UtcStartTime}-{currentTime.UtcEndTime}") ""
+                $"{meetingDay.Weekday}: {aggregatedTimes}"
+            )
+            |> String.concat("\n")
+        
+        let dumpToFileApplicationData (application: ConfirmedMentorshipApplication) =
+            $"
+                Mentor: {application.Mentor.MentorInformation.Fullname}
+                Mentee: {application.Mentee.MenteeInformation.Fullname}
+                Topic: {application.FsharpTopic.Name}
+                Possible meeting sessions: {dumpMeetingTimes application.MeetingTimes}
+            "
+
+        let fileContent = 
+            confirmedApplications 
+            |> List.map(fun application -> $"{dumpToFileApplicationData application}")
+            |> String.concat("\n \n")
+        
+        System.IO.File.WriteAllText("applicationDataDump.txt", fileContent)
