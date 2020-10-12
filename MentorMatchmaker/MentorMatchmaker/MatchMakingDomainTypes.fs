@@ -22,6 +22,9 @@ type FSharpCategory =
     | WebDevelopment
     | ContributeToCompiler
     | MachineLearning
+    | DistributedSystems
+    | MobileDevelopment
+    | DomainModelling
     | UpForAnything
 with
     member x.CategoryName =
@@ -31,6 +34,9 @@ with
         | ContributeToOpenSource -> "Contribute to open-source"
         | ContributeToCompiler -> "Contribute to compiler"
         | WebDevelopment -> "Web development"
+        | DistributedSystems -> "Distributed systems"
+        | DomainModelling -> "Domain modelling"
+        | MobileDevelopment -> "Mobile development"
         | MachineLearning -> "Machine learning"
         | UpForAnything -> "I am up for anything"
 
@@ -65,3 +71,14 @@ type ConfirmedMentorshipApplication =
       CouldMentorHandleMoreWork: bool
       FsharpTopic: FsharpTopic
       MeetingTimes: OverlapSchedule nel }
+
+let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
+let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
+let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityWeight.Popular }
+let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityWeight.Popular }
+let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityWeight.Rare }
+let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityWeight.Rare }
+let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWeight.Rare }
+let distributedSystems = { Category = DistributedSystems; PopularityWeight = PopularityWeight.Rare }
+let mobileDevelopment = { Category = MobileDevelopment; PopularityWeight = PopularityWeight.Rare }
+let domainModeling = { Category = DomainModelling; PopularityWeight = PopularityWeight.Popular }

@@ -18,6 +18,65 @@ module private Impl =
         |> List.ofArray
         |> List.map(fun x -> x.Replace(" ", ""))
 
+    let distributeOffsetHoursToSeparateDays (dayOfTheWeekName: string) (availableHoursUtc: TimeSpan list) : DayAvailability list =
+        let offsetGivenDayByOne (givenDay: DayOfWeek) (isCheckingForNextDay: bool) =
+            if isCheckingForNextDay && givenDay = DayOfWeek.Saturday then
+                DayOfWeek.Sunday
+            elif isCheckingForNextDay <> true && givenDay = DayOfWeek.Sunday then
+                DayOfWeek.Saturday
+            else
+                let offsetValue = if isCheckingForNextDay then 1 else -1
+                enum<DayOfWeek>(int givenDay + 1)
+
+        let convertWeekDayNameInDayOfWeek weekDayName =
+            match weekDayName with
+            | "Sunday" -> DayOfWeek.Sunday
+            | "Monday" -> DayOfWeek.Monday
+            | "Tuesday" -> DayOfWeek.Tuesday
+            | "Wednesday" -> DayOfWeek.Wednesday
+            | "Thursday" -> DayOfWeek.Thursday
+            | "Friday" -> DayOfWeek.Friday
+            | "Saturday" -> DayOfWeek.Saturday
+
+        let generateMeetingHoursForOffsetDay (offsetDayMeetingHours: TimeSpan list) (isCheckingForNextDay: bool) =
+            let dayOfTheWeek = convertWeekDayNameInDayOfWeek dayOfTheWeekName
+            let nextDay = offsetGivenDayByOne dayOfTheWeek isCheckingForNextDay
+
+            { WeekDayName = nextDay.ToString(); UtcHours = offsetDayMeetingHours }
+
+        let negativeOffsets = availableHoursUtc |> List.filter(fun x -> x.Days < 0)
+        let positiveOffsets = availableHoursUtc |> List.filter(fun x -> x.Days >= 1 && x.Hours >= 0)
+
+        match (positiveOffsets, negativeOffsets) with
+        | ([], []) -> 
+            [ { WeekDayName = dayOfTheWeekName; UtcHours = availableHoursUtc }]
+
+        | (nextDayHours, []) when nextDayHours.Length > 0 ->
+            let nextDayMeetingHoursWithoutOffset = nextDayHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
+            [
+                { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
+                generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true
+            ]
+
+        | ([], previousDayHours) when previousDayHours.Length > 0 ->
+            let previousDayMeetingHoursWithoutOffset = previousDayHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
+            [
+                generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
+                { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
+            ]
+
+        | (nextDaysHours, previousHours) ->
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
+            let nextDayMeetingHoursWithoutOffset = nextDaysHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+            let previousDayMeetingHoursWithoutOffset = previousHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+            [
+                generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
+                { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
+                generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true
+            ]
+
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
             match index with
@@ -37,13 +96,19 @@ module private Impl =
                 | Some availabilityRange ->
                     let availableRangeInUtc = 
                         availabilityRange 
-                        |> List.map(fun x -> if utcOffsetValue.Hours >= 0 then x.Subtract(utcOffsetValue) else x.Add(utcOffsetValue))
+                        |> List.map(fun x -> x.Add(utcOffsetValue))
                     if weekDayAvailability.Contains(',') <> true then
-                        Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
+                        (weekDayAvailability, availableRangeInUtc)
+                        ||> distributeOffsetHoursToSeparateDays
+                        |> Some 
                     else
                         weekDayAvailability
                         |> splitStringAndRemoveDelimiters
-                        |> List.map(fun x -> { WeekDayName = x; UtcHours = availableRangeInUtc })
+                        |> List.map(fun weekDayName -> (weekDayName, availableRangeInUtc))
+                        |> List.map(fun (weekDay, hoursInUtc) -> distributeOffsetHoursToSeparateDays weekDay hoursInUtc)
+                        |> List.concat
+                        |> List.groupBy(fun x -> x.WeekDayName)
+                        |> List.map(fun (availableDay, availableHours)-> { WeekDayName = availableDay; UtcHours = availableHours |> List.map(fun x -> x.UtcHours) |> List.concat})
                         |> Some
 
         // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
@@ -81,38 +146,54 @@ module private Impl =
 
         { AvailableDays = NonEmptyList.ofList availableDays }
 
-
     let extractApplicantInformation (row: MentorshipInformation.Row) =
         { Fullname = row.``What is your full name (First and Last Name)``
           SlackName = row.``What is your fsharp.org slack name?``
           EmailAddress = row.``Email Address``
           MentorshipSchedule = extractApplicantSchedule row }
 
-    let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
-    let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
-    let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityWeight.Popular }
-    let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityWeight.Popular }
-    let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityWeight.Rare }
-    let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityWeight.Rare }
-    let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWeight.Rare }
+    let deepDiveInFSharpKeywords = ["Deep"; "dive"; "investment"; "better"]
+    let mobileDevelopmentKeywords = [ "Uno"; "Fabulous"; "Xamarin"; "Mobile"]
+    let distributedSystemKeywords = [ "Microservices"; "Distributed Systems"; "event sourcing"]
+    let webDevelopmentKeywords = ["Web"; "Elmish"; "Fable"; "SAFE"; "Giraffe"; "React"; "Feliz"; "MVC"]
 
     let extractFsharpTopic (row: MentorshipInformation.Row) =
         let convertCategoryNameToTopic categoryName =
-            let matchOnStringCategory stringCategory =
-                match stringCategory with
-                | "Introduction to F#" -> Some introduction
-                | "Deep dive into F#" -> Some deepDive
-                | "Contribute to an open source project" -> Some contributeToOSS
-                | "Machine learning" -> Some machineLearning
-                | "Contribute to the compiler" -> Some contributeToCompiler
-                | "Web and SAFE stack"
-                | "Web programming/SAFE stack"
-                | "Fable/Elmish"
-                | "web development"
-                | "web development (Giraffe / Fable)"
-                | "Web development" -> Some webDevelopment
-                | "I am up for anything"
-                | _ -> Some upForAnything
+            let matchOnStringCategory (stringCategory: string) =                
+                let doesCategoryMatchKeyword (categoryName: string) (keywordList: string list) =
+                    keywordList |> List.exists(fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase)) 
+
+                let category = if stringCategory.[0] = ' ' then stringCategory.Substring(1) else stringCategory
+
+                if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some introduction
+
+                elif String.Equals("Contribute to an open source project", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some contributeToOSS
+
+                elif String.Equals("Machine learning", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some machineLearning
+
+                elif String.Equals("Contribute to the compiler", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some contributeToCompiler
+
+                elif category.Contains("up for anything", StringComparison.InvariantCultureIgnoreCase) then
+                    Some upForAnything
+
+                elif doesCategoryMatchKeyword category deepDiveInFSharpKeywords then
+                    Some deepDive
+
+                elif doesCategoryMatchKeyword category mobileDevelopmentKeywords then
+                    Some mobileDevelopment
+
+                elif doesCategoryMatchKeyword category distributedSystemKeywords then
+                    Some distributedSystems
+
+                elif doesCategoryMatchKeyword category webDevelopmentKeywords then
+                    Some webDevelopment
+
+                else
+                    None
 
             if String.IsNullOrEmpty categoryName then None
             elif categoryName.Contains(',') <> true then
