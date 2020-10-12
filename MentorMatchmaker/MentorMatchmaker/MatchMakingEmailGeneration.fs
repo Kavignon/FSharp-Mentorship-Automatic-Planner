@@ -56,9 +56,8 @@ module EmailGenerationService =
 
     let dumpTemplateEmailsInFile (mentorshipMatch: ConfirmedMentorshipApplication) =
         let fileContent =
-            [ transformConfirmedMatchIntoMenteeEmailTemplate mentorshipMatch; transformConfirmedMatchIntoMentorEmailTemplate mentorshipMatch]
-            |> List.map transformMentorshipEmailTemplateIntoEmail
-            |> List.map formatEmailIntoString
+            [ transformIntoMenteeTokens mentorshipMatch; transformIntoMentorTokens mentorshipMatch]
+            |> List.map formatEmailToSend
             |> String.concat("\n")
 
         System.IO.File.WriteAllText("templateEmailToSendDump.txt", fileContent)
