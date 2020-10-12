@@ -152,33 +152,48 @@ module private Impl =
           EmailAddress = row.``Email Address``
           MentorshipSchedule = extractApplicantSchedule row }
 
+    let deepDiveInFSharpKeywords = ["Deep"; "dive"; "investment"; "better"]
+    let mobileDevelopmentKeywords = [ "Uno"; "Fabulous"; "Xamarin"; "Mobile"]
+    let distributedSystemKeywords = [ "Microservices"; "Distributed Systems"; "event sourcing"]
+    let webDevelopmentKeywords = ["Web"; "Elmish"; "Fable"; "SAFE"; "Giraffe"; "React"; "Feliz"; "MVC"]
+
     let extractFsharpTopic (row: MentorshipInformation.Row) =
         let convertCategoryNameToTopic categoryName =
-            let matchOnStringCategory stringCategory =
-                match stringCategory with
-                | "Introduction to F#" -> Some introduction
-                | "Deep dive into F#" -> Some deepDive
-                | "Contribute to an open source project" -> Some contributeToOSS
-                | "Machine learning" -> Some machineLearning
-                | "Contribute to the compiler" -> Some contributeToCompiler
-                | "Microservices"
-                | "Distributed systems"
-                | "Distributed System" -> Some distributedSystems
-                | "Uno"
-                | "Xamarin"
-                | "Mobile development"
-                | "Mobile Development"
-                | "Mobile"
-                | "Fabulous" -> Some mobileDevelopment
-                | "Domain modeling" -> Some domainModeling
-                | "Web and SAFE stack"
-                | "Web programming/SAFE stack"
-                | "Fable/Elmish"
-                | "web development"
-                | "web development (Giraffe / Fable)"
-                | "Web development" -> Some webDevelopment
-                | "I am up for anything"
-                | _ -> Some upForAnything
+            let matchOnStringCategory (stringCategory: string) =                
+                let doesCategoryMatchKeyword (categoryName: string) (keywordList: string list) =
+                    keywordList |> List.exists(fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase)) 
+
+                let category = if stringCategory.[0] = ' ' then stringCategory.Substring(1) else stringCategory
+
+                if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some introduction
+
+                elif String.Equals("Contribute to an open source project", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some contributeToOSS
+
+                elif String.Equals("Machine learning", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some machineLearning
+
+                elif String.Equals("Contribute to the compiler", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some contributeToCompiler
+
+                elif category.Contains("up for anything", StringComparison.InvariantCultureIgnoreCase) then
+                    Some upForAnything
+
+                elif doesCategoryMatchKeyword category deepDiveInFSharpKeywords then
+                    Some deepDive
+
+                elif doesCategoryMatchKeyword category mobileDevelopmentKeywords then
+                    Some mobileDevelopment
+
+                elif doesCategoryMatchKeyword category distributedSystemKeywords then
+                    Some distributedSystems
+
+                elif doesCategoryMatchKeyword category webDevelopmentKeywords then
+                    Some webDevelopment
+
+                else
+                    None
 
             if String.IsNullOrEmpty categoryName then None
             elif categoryName.Contains(',') <> true then
