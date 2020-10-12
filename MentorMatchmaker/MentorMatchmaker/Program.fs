@@ -1,7 +1,7 @@
 ﻿open System
 open System.IO
 
-open MentorMatchmaker.Domain
+open MentorMatchmaker.DomainOperations
 open MentorMatchmaker.Infra
 
 open Argu
