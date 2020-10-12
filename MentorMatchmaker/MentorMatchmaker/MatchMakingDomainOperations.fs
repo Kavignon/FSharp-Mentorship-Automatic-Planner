@@ -93,14 +93,15 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
     let prepareDataForMatching (potentialMatch: PotentialMentorshipMatch) (confirmedMatches: ConfirmedMentorshipApplication list) (potentialMatchesRemaining: PotentialMentorshipMatch list) =
         let mentee = potentialMatch.Mentee
         let mentor = potentialMatch.Mentor
-        let confirmedmentorshipMatch = {
+        let confirmedMentoshipMatch = {
             Mentee = mentee
             Mentor = mentor
             FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
+            CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
             MeetingTimes = generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
         }
 
-        let updatedMappings = matches |> Map.add mentor (confirmedmentorshipMatch :: confirmedMatches)
+        let updatedMappings = matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
         let updatedMatchedMentees = matchedMentees |> Set.add mentee
 
         (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
@@ -153,10 +154,12 @@ module Matchmaking =
         
         let dumpToFileApplicationData (application: ConfirmedMentorshipApplication) =
             $"
-                Mentor: {application.Mentor.MentorInformation.Fullname}
-                Mentee: {application.Mentee.MenteeInformation.Fullname}
+                Mentor: Name -> {application.Mentor.MentorInformation.Fullname} Email -> {application.Mentor.MentorInformation.EmailAddress}
+                Could have supported more students: {application.CouldMentorHandleMoreWork}
+                Max simultaneous students possible: {application.Mentor.SimultaneousMenteeCount}
+                Mentee: Name -> {application.Mentee.MenteeInformation.Fullname} Email -> {application.Mentee.MenteeInformation.EmailAddress}
                 Topic: {application.FsharpTopic.Name}
-                Possible meeting sessions: {dumpMeetingTimes application.MeetingTimes}
+                Possible meeting sessions (in UTC): {dumpMeetingTimes application.MeetingTimes}
             "
 
         let fileContent = 

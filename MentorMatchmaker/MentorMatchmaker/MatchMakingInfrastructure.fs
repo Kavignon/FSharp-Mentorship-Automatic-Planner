@@ -28,14 +28,16 @@ module private Impl =
             | 4 -> Some (availableLocalTimeHoursForMentorship |> List.skip 12 |> List.take 3)
             | _ -> None
 
-        let convertDateAndTimeToAvailability weekDayAvailability availabilityIndex utcOffsetValue =
+        let convertDateAndTimeToAvailability (weekDayAvailability: string) (availabilityIndex: int) (utcOffsetValue: TimeSpan) =
             if String.IsNullOrEmpty weekDayAvailability then None
             else
                 let optAvailabilityRange = convertAvailabilityIndexToTimeRange availabilityIndex
                 match optAvailabilityRange with
                 | None -> None
                 | Some availabilityRange ->
-                    let availableRangeInUtc = availabilityRange |> List.map(fun x -> x.Subtract(utcOffsetValue))
+                    let availableRangeInUtc = 
+                        availabilityRange 
+                        |> List.map(fun x -> if utcOffsetValue.Hours >= 0 then x.Subtract(utcOffsetValue) else x.Add(utcOffsetValue))
                     if weekDayAvailability.Contains(',') <> true then
                         Some [ { WeekDayName = weekDayAvailability; UtcHours = availableRangeInUtc } ]
                     else
@@ -107,6 +109,7 @@ module private Impl =
                 | "Web programming/SAFE stack"
                 | "Fable/Elmish"
                 | "web development"
+                | "web development (Giraffe / Fable)"
                 | "Web development" -> Some webDevelopment
                 | "I am up for anything"
                 | _ -> Some upForAnything
