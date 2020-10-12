@@ -43,12 +43,20 @@ module private Implementation =
             MenteeAvailabilitiesInUtc = confirmedMatch.MeetingTimes
         }
 
-    let transformMentorshipEmailTemplateIntoEmail (mentorshipEmailTemplate: MentorshipEmailTemplate) : Email =
-        {
-        }
+    let replaceMenteeTemplateWithTokens (menteeTokens: MenteeEmailTemplateToken) =
+        $"
+        "
 
-    let formatEmailIntoString (email: Email) : string =
-        ""
+    let replaceMentorTemplateWithTokens (mentorTokens: MentorEmailTemplateToken) =
+        $"
+        "
+
+    let formatEmailToSend (mentorshipEmailTemplateTokens: MentorshipEmailTemplateToken) : string =
+        match mentorshipEmailTemplateTokens with
+        | Mentee menteeTokens -> 
+            replaceMenteeTemplateWithTokens menteeTokens
+        | Mentor mentorTokens -> 
+            replaceMentorTemplateWithTokens mentorTokens
 
 [<RequireQualifiedAccess>]
 module EmailGenerationService =
