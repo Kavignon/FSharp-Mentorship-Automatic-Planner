@@ -3,6 +3,7 @@ open System.IO
 
 open MentorMatchmaker.DomainOperations
 open MentorMatchmaker.Infra
+open MentorMatchmaker.EmailGeneration
 
 open Argu
 
@@ -56,9 +57,7 @@ let main argv =
                         mentorshipMatches
                         |> List.map(fun (_, matches) -> matches)
                         |> List.concat
-                        |> Matchmaking.dumpMatchingToFile
-
-                        Ok mentorshipMatches
+                        |> Ok
 
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
     let cliArgumentParser = ArgumentParser.Create<CliArgument>(checkStructure = false, errorHandler = errorHandler, programName = "Mentor matchmaker") // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
@@ -69,4 +68,5 @@ let main argv =
         printfn $"{error.ErrorMessage}"
         -1
     | Ok mentorshipMatches ->
+        mentorshipMatches |> List.map EmailGenerationService.dumpTemplateEmailsInFile |> ignore
         0

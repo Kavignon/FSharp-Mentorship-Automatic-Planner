@@ -142,30 +142,3 @@ module Matchmaking =
             |> Map.map(fun _ confirmedMatches -> confirmedMatches)
             |> Map.toList
             |> Some
-
-    let dumpMatchingToFile (confirmedApplications: ConfirmedMentorshipApplication list) =
-        let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
-            meetingTimes
-            |> NonEmptyList.map(fun meetingDay ->
-                let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
-                let aggregatedTimes = aggregatedTimes.Substring(2)
-                $"\n {meetingDay.Weekday}: {aggregatedTimes}"
-            )
-            |> String.concat("\t\t\t")
-        
-        let dumpToFileApplicationData (application: ConfirmedMentorshipApplication) =
-            $"
-                Mentor: Name -> {application.Mentor.MentorInformation.Fullname} Email -> {application.Mentor.MentorInformation.EmailAddress}
-                Could have supported more students: {application.CouldMentorHandleMoreWork}
-                Max simultaneous students possible: {application.Mentor.SimultaneousMenteeCount}
-                Mentee: Name -> {application.Mentee.MenteeInformation.Fullname} Email -> {application.Mentee.MenteeInformation.EmailAddress}
-                Topic: {application.FsharpTopic.Name}
-                Possible meeting hours (in UTC): {dumpMeetingTimes application.MeetingTimes}
-            "
-
-        let fileContent = 
-            confirmedApplications 
-            |> List.map(fun application -> $"{dumpToFileApplicationData application}")
-            |> String.concat("\n")
-        
-        System.IO.File.WriteAllText("applicationDataDump.txt", fileContent)
