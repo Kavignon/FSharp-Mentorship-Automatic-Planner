@@ -8,7 +8,6 @@ open Infra
 open Utilities
 open DomainTypes
 
-
 let checkForAvailabilityMatch mentorAvailability menteeAvailability =
     let anyCommonSlot =
         List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
@@ -81,7 +80,7 @@ let findAllPotentialMentorshipMatches mentors mentees=
         { mentorshipMatch with MatchingFsharpInterests = orderedInterestBasedOnPopularity }
     )
 
-let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipApplication list>) (potentialMatches: PotentialMentorshipMatch list) (matchedMentees: Set<Mentee>) =
+let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipApplication list>) (matchedMentees: Set<Mentee>) (potentialMatches: PotentialMentorshipMatch list) =
     let prepareDataForMatching (potentialMatch: PotentialMentorshipMatch) (confirmedMatches: ConfirmedMentorshipApplication list) (potentialMatchesRemaining: PotentialMentorshipMatch list) =
         let mentee = potentialMatch.Mentee
         let mentor = potentialMatch.Mentor
@@ -95,26 +94,26 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
         let updatedMappings = matches |> Map.add mentor (confirmedmentorshipMatch :: confirmedMatches)
         let updatedMatchedMentees = matchedMentees |> Set.add mentee
 
-        (updatedMappings, potentialMatchesRemaining, updatedMatchedMentees)
+        (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
 
     match potentialMatches with
     | [] -> matches
-    | potentialMatch :: tail ->
+    | potentialMatch :: remainingPotentialMatches ->
         if matchedMentees.Contains potentialMatch.Mentee then
-            createUniqueMentorshipMatches matches tail matchedMentees
+            createUniqueMentorshipMatches matches matchedMentees remainingPotentialMatches
         else
             let optMentorWithMatches = matches |> Map.tryFind potentialMatch.Mentor
             match optMentorWithMatches with
             | Some confirmedMatches when confirmedMatches.Length >= (potentialMatch.Mentor.SimultaneousMenteeCount |> int) ->
-                createUniqueMentorshipMatches matches tail matchedMentees
+                createUniqueMentorshipMatches matches matchedMentees remainingPotentialMatches
             
             | Some confirmedMatches ->
-                (potentialMatch, confirmedMatches, tail) 
+                (potentialMatch, confirmedMatches, remainingPotentialMatches) 
                 |||> prepareDataForMatching
                 |||> createUniqueMentorshipMatches
 
             | None ->
-                (potentialMatch, [], tail) 
+                (potentialMatch, [], remainingPotentialMatches) 
                 |||> prepareDataForMatching
                 |||> createUniqueMentorshipMatches
 
@@ -125,61 +124,9 @@ module Matchmaking =
         if atLeastOneMatchPossible <> true then
             None
         else
-            let allPotentialMentorshipMatches = findAllPotentialMentorshipMatches
-            let uniqueMentorshipMatches = createUniqueMentorshipMatches Map.empty allMentorshipMatchesPossible Set.empty
-////mentors
-////|> List.map(fun mentor -> tryFindMatchingMenteeForMentorExpertise mentor mentees)
-////|> List.chooseDefault
-////|> Some
-
-//let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
-//    let fromRarestToCommonExpertiseAreas =
-//        mentor.AreasOfExpertise
-//        |> NonEmptyList.toList
-//        |> List.sortByDescending(fun x -> x.PopularityWeight)
-
-//    fromRarestToCommonExpertiseAreas
-//    |> List.map(fun expertiseArea ->
-//        mentees |> List.map(fun mentee ->
-//        let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule) ||> doScheduleOverlap
-//        let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
-
-//        if foundMatchingMentee
-//        then Some (expertiseArea, mentee)
-//        else None)
-//    )
-//    |> List.concat
-//    |> List.chooseDefault
-//    |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
-
-////let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
-////    listOfMentors
-////    |> List.map(fun mentor ->
-////        let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
-////        if menteeMatches.Length = 0 then None
-////        else
-////            let fsharpTopicAndMenteeTuple = menteeMatches.Head
-////            let matchedMentee = snd fsharpTopicAndMenteeTuple
-////            let fsharpTopic = fst fsharpTopicAndMenteeTuple
-////            let matchingSchedule =  
-////            Some
-////                { Mentee = matchedMentee
-////                  Mentor = mentor
-////                  FsharpTopic = fsharpTopic
-////                  MeetingTimes = NonEmptyList.ofList matchingSchedule }
-////    )
-////    |> List.chooseDefault
-
-////let tryFindMatchingMenteeForMentorExpertise mentor mentees =
-////    let menteeMatches = (mentor, mentees) ||> findMatchingMenteeForMentor
-////    if menteeMatches.Length = 0 then None
-////    else
-////        let fsharpTopicAndMenteeTuple = menteeMatches.Head
-////        let matchedMentee = snd fsharpTopicAndMenteeTuple
-////        let fsharpTopic = fst fsharpTopicAndMenteeTuple
-////        let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
-////        Some
-////            { Mentee = matchedMentee
-////              Mentor = mentor
-////              FsharpTopic = fsharpTopic
-////              MeetingTimes = NonEmptyList.ofList matchingSchedule }
+            (mentors, mentees)
+            ||> findAllPotentialMentorshipMatches
+            |> createUniqueMentorshipMatches Map.empty Set.empty
+            |> Map.map(fun _ confirmedMatches -> confirmedMatches)
+            |> List.concat
+            |> Some
