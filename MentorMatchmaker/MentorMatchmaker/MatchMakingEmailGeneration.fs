@@ -1,68 +1,46 @@
-﻿module MentorMatchmaker.EmailGeneration
+module MatchMaking.EmailGeneration
 
 open MentorMatchmaker.Utilities
 open MentorMatchmaker.DomainTypes
 
 module private Implementation =
-    type MentorEmailTemplateInformation =
+    type MentorEmailTemplateToken =
         {   MentorFirstName: string
             LengthOfMentorshipInWeeks: int
             MenteeFirstName: string
-            Email: string
+            MentorEmail: string
             FssfSlack: string
             FsharpTopic: FsharpTopic
             MenteeAvailabilitiesInUtc: OverlapSchedule nel }
 
-    type MenteeEmailTemplateInformation =
+    type MenteeEmailTemplateToken =
         {   MenteeFirstName: string
             MentorFirstName: string
             LengthOfMentorshipInWeeks: int
+            MenteeEmailAddress: string
             }
 
-    type MentorshipEmailTemplate =
-        | Mentor of MentorEmailTemplateInformation
-        | Mentee of MenteeEmailTemplateInformation
+    type MentorshipEmailTemplateToken =
+        | Mentor of MentorEmailTemplateToken
+        | Mentee of MenteeEmailTemplateToken
 
-    type Email =
-        {   From: string
-            To: string
-            BodyOfText: string
-            ReplyTo: string
-            Subject: string }
-
-    let dumpMatchingToFile (confirmedApplications: ConfirmedMentorshipApplication list) =
-        let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
-            meetingTimes
-            |> NonEmptyList.map(fun meetingDay ->
-                let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
-                let aggregatedTimes = aggregatedTimes.Substring(2)
-                $"\n {meetingDay.Weekday}: {aggregatedTimes}"
-            )
-            |> String.concat("\t\t\t")
-    
-        let dumpToFileApplicationData (application: ConfirmedMentorshipApplication) =
-            $"
-                Mentor: Name -> {application.Mentor.MentorInformation.Fullname} Email -> {application.Mentor.MentorInformation.EmailAddress}
-                Could have supported more students: {application.CouldMentorHandleMoreWork}
-                Max simultaneous students possible: {application.Mentor.SimultaneousMenteeCount}
-                Mentee: Name -> {application.Mentee.MenteeInformation.Fullname} Email -> {application.Mentee.MenteeInformation.EmailAddress}
-                Topic: {application.FsharpTopic.Name}
-                Possible meeting hours (in UTC): {dumpMeetingTimes application.MeetingTimes}
-            "
-
-        let fileContent = 
-            confirmedApplications 
-            |> List.map(fun application -> $"{dumpToFileApplicationData application}")
-            |> String.concat("\n")
-    
-        System.IO.File.WriteAllText("applicationDataDump.txt", fileContent)
-
-    let transformConfirmedMatchIntoMenteeEmailTemplate (confirmedMatch: ConfirmedMentorshipApplication) =
+    let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         Mentee {
+            MenteeFirstName = confirmedMatch.Mentee.MenteeInformation.FirstName
+            MentorFirstName = confirmedMatch.Mentor.MentorInformation.FirstName
+            MenteeEmailAddress = confirmedMatch.Mentee.MenteeInformation.EmailAddress
+            LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
         }
 
-    let transformConfirmedMatchIntoMentorEmailTemplate (confirmedMatch: ConfirmedMentorshipApplication) =
+    let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         Mentor {
+            MentorFirstName = confirmedMatch.Mentor.MentorInformation.FirstName
+            LengthOfMentorshipInWeeks = 8
+            MenteeFirstName = confirmedMatch.Mentee.MenteeInformation.FirstName
+            MentorEmail = confirmedMatch.Mentor.MentorInformation.EmailAddress
+            FssfSlack = confirmedMatch.Mentor.MentorInformation.SlackName
+            FsharpTopic = confirmedMatch.FsharpTopic
+            MenteeAvailabilitiesInUtc = confirmedMatch.MeetingTimes
         }
 
     let transformMentorshipEmailTemplateIntoEmail (mentorshipEmailTemplate: MentorshipEmailTemplate) : Email =
