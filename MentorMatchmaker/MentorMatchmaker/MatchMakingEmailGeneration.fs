@@ -32,23 +32,23 @@ module private Implementation =
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         MenteeAndMentorPair {
             MentorshipInterest = confirmedMatch.FsharpTopic
-            MenteeFirstName = confirmedMatch.Mentee.MenteeInformation.FirstName
-            MenteeFssfSlack = confirmedMatch.Mentee.MenteeInformation.SlackName
-            MentorFirstName = confirmedMatch.Mentor.MentorInformation.FirstName
-            MentorFssfSlack = confirmedMatch.Mentor.MentorInformation.SlackName
-            MenteeEmailAddress = confirmedMatch.Mentee.MenteeInformation.EmailAddress
-            MentorEmailAddress = confirmedMatch.Mentor.MentorInformation.EmailAddress
+            MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
+            MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
+            MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
+            MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
+            MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
+            MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
             LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
             AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes
         }
 
     let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         Mentor {
-            MentorFirstName = confirmedMatch.Mentor.MentorInformation.FirstName
+            MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
             LengthOfMentorshipInWeeks = 8
-            MenteeFirstName = confirmedMatch.Mentee.MenteeInformation.FirstName
-            MentorEmail = confirmedMatch.Mentor.MentorInformation.EmailAddress
-            FssfSlack = confirmedMatch.Mentor.MentorInformation.SlackName
+            MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
+            MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
+            FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
             FsharpTopic = confirmedMatch.FsharpTopic
         }
 
