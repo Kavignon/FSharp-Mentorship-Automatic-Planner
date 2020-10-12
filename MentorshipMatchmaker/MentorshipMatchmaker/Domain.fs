@@ -108,8 +108,8 @@ let canMatchMenteesWithMentors listOfMentors listOfMentees =
         |> fun menteeMatches -> List.isNotEmpty menteeMatches)
 
 [<RequireQualifiedAccess>]
-module Matchmaking =
-    let tryGenerateMentorshipConfirmedApplicantList (mentees: Mentee list) (mentors: Mentor list) =
+module Matchmaker =
+    let matchApplicants (mentees: Mentee list) (mentors: Mentor list) =
         let atLeastOneMatchPossible = canMatchMenteesWithMentors mentors mentees
         if atLeastOneMatchPossible <> true then
             None

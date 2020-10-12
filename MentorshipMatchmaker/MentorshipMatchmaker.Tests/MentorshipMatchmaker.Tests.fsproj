@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Arbitraries.fs" />
     <Compile Include="Domain should.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

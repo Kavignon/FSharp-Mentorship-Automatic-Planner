@@ -1,7 +1,11 @@
 module ``Domain should``
 
+open FsCheck.Xunit
+open MentorshipMatchmaker.Domain
 open Xunit
 
-[<Fact>]
-let ``My test`` () =
-    Assert.True(true)
+[<Property>]
+let ``match nobody if there is no mentors`` mentees =
+    Matchmaker.matchMenteesWithMentors
+
+    ()

@@ -11,6 +11,8 @@
     <Compile Include="Utilities.fs" />
     <Compile Include="Infra.fs" />
     <Compile Include="Domain.fs" />
+    <Compile Include="AppHandlers.fs" />
+    <Compile Include="AppValidation.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
