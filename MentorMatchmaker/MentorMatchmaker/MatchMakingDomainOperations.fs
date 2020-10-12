@@ -97,6 +97,7 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
             Mentee = mentee
             Mentor = mentor
             FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
+            CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
             MeetingTimes = generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
         }
 
