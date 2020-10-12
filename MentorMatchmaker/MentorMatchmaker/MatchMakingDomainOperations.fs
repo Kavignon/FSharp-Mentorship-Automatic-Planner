@@ -1,4 +1,4 @@
-﻿module MentorMatchmaker.DomainOperations
+module MentorMatchmaker.DomainOperations
 
 open System.Linq
 
@@ -93,14 +93,14 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
     let prepareDataForMatching (potentialMatch: PotentialMentorshipMatch) (confirmedMatches: ConfirmedMentorshipApplication list) (potentialMatchesRemaining: PotentialMentorshipMatch list) =
         let mentee = potentialMatch.Mentee
         let mentor = potentialMatch.Mentor
-        let confirmedmentorshipMatch = {
+        let confirmedMentoshipMatch = {
             Mentee = mentee
             Mentor = mentor
             FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
             MeetingTimes = generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
         }
 
-        let updatedMappings = matches |> Map.add mentor (confirmedmentorshipMatch :: confirmedMatches)
+        let updatedMappings = matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
         let updatedMatchedMentees = matchedMentees |> Set.add mentee
 
         (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
