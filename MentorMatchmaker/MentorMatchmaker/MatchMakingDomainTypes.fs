@@ -6,8 +6,8 @@ open Utilities
 
 type DayAvailability = { WeekDayName: string; UtcHours: TimeSpan list }
 type CalendarSchedule = { AvailableDays: DayAvailability nel }
-type TimeRange = { UtcStartTime: TimeSpan; UtcEndTime: TimeSpan }
-type OverlapSchedule = { Weekday: string; MatchPeriods: TimeRange nel }
+type MentoringSession = { UtcStartTime: TimeSpan; UtcEndTime: TimeSpan }
+type OverlapSchedule = { Weekday: string; MatchedAvailablePeriods: MentoringSession nel }
 
 type PersonInformation =
     { Fullname: string
@@ -23,6 +23,16 @@ type FSharpCategory =
     | ContributeToCompiler
     | MachineLearning
     | UpForAnything
+with
+    member x.CategoryName =
+        match x with
+        | IntroductionToFSharp -> "Introduction to F#"
+        | DeepDiveInFSharp -> "Deep dive in F#"
+        | ContributeToOpenSource -> "Contribute to open-source"
+        | ContributeToCompiler -> "Contribute to compiler"
+        | WebDevelopment -> "Web development"
+        | MachineLearning -> "Machine learning"
+        | UpForAnything -> "I am up for anything"
 
 type PopularityWeight =
     | Common = 3
@@ -32,6 +42,8 @@ type PopularityWeight =
 type FsharpTopic =
     { Category: FSharpCategory
       PopularityWeight: PopularityWeight }
+with
+    member x.Name = x.Category.CategoryName
 
 type Mentor =
     { MentorInformation: PersonInformation
