@@ -1,4 +1,4 @@
-﻿module MentorMatchmaker.Utilities
+﻿module MentorshipMatchmaker.Utilities
 
 open System.Linq
 

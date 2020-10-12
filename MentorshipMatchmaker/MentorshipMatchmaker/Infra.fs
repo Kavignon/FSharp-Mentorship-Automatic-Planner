@@ -1,4 +1,4 @@
-﻿module MentorMatchmaker.Infra
+﻿module MentorshipMatchmaker.Infra
 
 open System
 
