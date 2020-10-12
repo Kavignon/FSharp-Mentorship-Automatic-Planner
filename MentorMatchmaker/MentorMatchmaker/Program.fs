@@ -46,7 +46,7 @@ let main argv =
                 elif File.Exists(csvDocumentPath) <> true then
                     Error (RelativePathDoesNotExists csvDocumentPath)
                 else
-                    let mentorshipPairings =
+                    let mentorshipPairings, plannerInputs =
                         csvDocumentPath
                         |> CsvExtractor.extractMentorshipPlannerInputs
                         |> Matchmaking.getMentorshipPairing
@@ -56,7 +56,7 @@ let main argv =
                         Error (NoMatchPossible csvDocumentPath)
                 
                     | _ ->
-                        Ok mentorshipPairings
+                        Ok (mentorshipPairings, plannerInputs)
 
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
     let cliArgumentParser = ArgumentParser.Create<CliArgument>(checkStructure = false, errorHandler = errorHandler, programName = "Mentor matchmaker") // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
@@ -66,6 +66,7 @@ let main argv =
     | Error error ->
         printfn $"{error.ErrorMessage}"
         -1
-    | Ok mentorshipMatches ->
-        mentorshipMatches |> List.map EmailGenerationService.dumpTemplateEmailsInFile |> ignore
+    | Ok (mentorshipPairings, plannerInputs) ->
+        mentorshipPairings |> List.map EmailGenerationService.dumpTemplateEmailsInFile |> ignore
+        plannerInputs |> Matchmaking.dumpToFileUnmatchedApplicants
         0

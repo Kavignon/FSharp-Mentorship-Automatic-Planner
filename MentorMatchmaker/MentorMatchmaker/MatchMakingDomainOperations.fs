@@ -159,11 +159,11 @@ module Matchmaking =
             unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings |> List.exists(fun pairing -> pairing.MatchedMentor = unmatchedMentor) <> true)
 
         match (plannerInputs.UnmatchedMentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
-        | ([], _) -> 
-            plannerInputs.ConfirmedMatches
+        | ([], _) ->
+            plannerInputs.ConfirmedMatches, plannerInputs
 
         | (_, 0) ->
-            plannerInputs.ConfirmedMatches
+            plannerInputs.ConfirmedMatches, plannerInputs
 
         | _ ->
             let (confirmedMatches, matchedMenteeSet) = getConfirmedMatchesFromPlanner plannerInputs
@@ -176,4 +176,64 @@ module Matchmaking =
                     NumberOfHoursRequiredForOverlap = plannerInputs.NumberOfHoursRequiredForOverlap - 1 }
 
             getMentorshipPairing updatedPlanner
+
+    // TODO: Could be fun to imrpove the backend and domain model by discerning between a unmatched and matched applicant. Plus removing this bool would make me feel a lot better.
+    type UnmatchedApplicant = {
+        Name: string
+        EmailAddress: string
+        IsMentor: bool
+        Interests: FsharpTopic nel
+        AvailableDays: DayAvailability nel
+    }
+
+    let dumpToFileUnmatchedApplicants (plannerInputs: MentorshipPlannerInputs) =
+        let dumpToFileApplicationData (unmatchedApplicant: UnmatchedApplicant) =
+            let topics = unmatchedApplicant.Interests |> NonEmptyList.map(fun topic -> topic.Name) |> String.concat " ,"
+            let availabilities = 
+                unmatchedApplicant.AvailableDays
+                |> NonEmptyList.map(fun day ->
+                    let availableHours = day.UtcHours |> List.map(fun utc -> $"{utc.Hours}") |> String.concat " ,"
+                    $"{day.WeekDayName}: {availableHours}"
+                )
+                |> String.concat  ", "
+
+            let applicantType = if unmatchedApplicant.IsMentor then "Mentor" else "Mentee"
+            $"
+                {applicantType}: Name -> {unmatchedApplicant.Name} Email -> {unmatchedApplicant.EmailAddress}
+                Topics: {topics}
+                Available hours in UTC: 
+                        {availabilities}
+            "
+        let transformedMenteesInUnmatchedApplicants = 
+            plannerInputs.UnmatchedMentees 
+            |> List.map(fun x -> 
+                { 
+                    Name = x.MenteeInformation.Fullname
+                    EmailAddress = x.MenteeInformation.EmailAddress
+                    IsMentor = false
+                    Interests = x.TopicsOfInterest
+                    AvailableDays = x.MenteeInformation.MentorshipSchedule.AvailableDays
+                }
+        )
+
+        let transformedMentorsInUnmatchedApplicants = 
+            plannerInputs.UnmatchedMentors 
+            |> List.map(fun x -> 
+                { 
+                    Name = x.MentorInformation.Fullname
+                    EmailAddress = x.MentorInformation.EmailAddress
+                    IsMentor = true
+                    Interests = x.AreasOfExpertise
+                    AvailableDays = x.MentorInformation.MentorshipSchedule.AvailableDays
+                }
+        )
+
+        let unmatchedApplicants = transformedMenteesInUnmatchedApplicants @ transformedMentorsInUnmatchedApplicants
+
+        let fileContent = 
+            unmatchedApplicants 
+            |> List.map(fun application -> $"{dumpToFileApplicationData application}")
+            |> String.concat("\n")
+
+        System.IO.File.WriteAllText("applicationDataDump.txt", fileContent)
 
