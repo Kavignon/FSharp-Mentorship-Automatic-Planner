@@ -46,18 +46,17 @@ let main argv =
                 elif File.Exists(csvDocumentPath) <> true then
                     Error (RelativePathDoesNotExists csvDocumentPath)
                 else
-                    let (mentors, mentees) = CsvExtractor.extract csvDocumentPath
-                    let optMentorshipMatches = Matchmaking.tryGenerateMentorshipConfirmedApplicantList mentees mentors
+                    let mentorshipPairings =
+                        csvDocumentPath
+                        |> CsvExtractor.extractMentorshipPlannerInputs
+                        |> Matchmaking.getMentorshipPairing
 
-                    match optMentorshipMatches with
-                    | None ->
+                    match mentorshipPairings with
+                    | [] ->
                         Error (NoMatchPossible csvDocumentPath)
                 
-                    | Some mentorshipMatches ->
-                        mentorshipMatches
-                        |> List.map(fun (_, matches) -> matches)
-                        |> List.concat
-                        |> Ok
+                    | _ ->
+                        Ok mentorshipPairings
 
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
     let cliArgumentParser = ArgumentParser.Create<CliArgument>(checkStructure = false, errorHandler = errorHandler, programName = "Mentor matchmaker") // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
