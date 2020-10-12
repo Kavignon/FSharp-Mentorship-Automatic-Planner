@@ -11,6 +11,7 @@
     <Compile Include="MatchMakingDomainTypes.fs" />
     <Compile Include="MatchMakingInfrastructure.fs" />
     <Compile Include="MatchMakingDomainOperations.fs" />
+    <Compile Include="MatchMakingEmailGeneration.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
