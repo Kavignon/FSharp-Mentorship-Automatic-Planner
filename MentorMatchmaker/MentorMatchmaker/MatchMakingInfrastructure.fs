@@ -134,7 +134,6 @@ module private Impl =
             |> List.chooseDefault
             |> List.concat
             |> List.chooseDefault
-            |> List.sortByDescending(fun x -> x.PopularityWeight)
             |> NonEmptyList.ofList
 
         let mentors =
