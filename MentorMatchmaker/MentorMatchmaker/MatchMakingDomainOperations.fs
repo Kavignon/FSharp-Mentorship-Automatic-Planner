@@ -1,4 +1,4 @@
-module MentorMatchmaker.DomainOperations
+﻿module MentorMatchmaker.DomainOperations
 
 open System.Linq
 
@@ -159,7 +159,7 @@ module Matchmaking =
                 Max simultaneous students possible: {application.Mentor.SimultaneousMenteeCount}
                 Mentee: Name -> {application.Mentee.MenteeInformation.Fullname} Email -> {application.Mentee.MenteeInformation.EmailAddress}
                 Topic: {application.FsharpTopic.Name}
-                Possible meeting sessions: {dumpMeetingTimes application.MeetingTimes}
+                Possible meeting sessions (in UTC): {dumpMeetingTimes application.MeetingTimes}
             "
 
         let fileContent = 
