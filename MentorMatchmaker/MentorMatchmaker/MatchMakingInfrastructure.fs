@@ -10,6 +10,14 @@ open DomainTypes
 
 type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
 
+type MentorshipPlannerInputs = {
+    UnmatchedMentees: Mentee list
+    UnmatchedMentors: Mentor list
+    ConfirmedMatches: ConfirmedMentorshipApplication list
+    MatchedMenteesSet: Set<Mentee>
+    NumberOfHoursRequiredForOverlap: int
+}
+
 module private Impl =
     let availableLocalTimeHoursForMentorship = [9..23] |> List.map(fun x -> TimeSpan(x, 0, 0))
 
@@ -246,6 +254,13 @@ module private Impl =
 
 [<RequireQualifiedAccess>]
 module CsvExtractor =
-    let extract (csvDocumentFilePath: string) =
-        MentorshipInformation.Load csvDocumentFilePath
-        |> Impl.extractPeopleInformation
+    let extractMentorshipPlannerInputs (csvDocumentFilePath: string) =
+        let (unmatchedMentors, unmatchedMentees) =
+            MentorshipInformation.Load csvDocumentFilePath
+            |> Impl.extractPeopleInformation
+
+        {   UnmatchedMentees = unmatchedMentees
+            UnmatchedMentors = unmatchedMentors
+            ConfirmedMatches = []
+            MatchedMenteesSet = Set.empty
+            NumberOfHoursRequiredForOverlap = 8 }

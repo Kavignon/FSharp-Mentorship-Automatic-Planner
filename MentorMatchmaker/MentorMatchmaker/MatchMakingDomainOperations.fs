@@ -8,32 +8,33 @@ open Infra
 open Utilities
 open DomainTypes
 
-let checkForAvailabilityMatch mentorAvailability menteeAvailability =
+let checkForAvailabilityMatch mentorAvailability menteeAvailability hoursOfOverlap =
     let anyCommonSlot =
         List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
-        |> List.length >= 3
+        |> List.length >= hoursOfOverlap
     mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && anyCommonSlot
 
-let doScheduleOverlap menteeSchedule mentorSchedule =
+let doScheduleOverlap menteeSchedule mentorSchedule hoursOfOverlap=
     let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
     let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
-    let anySlotBetweenApplicants menteeSchedule =
-        List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
+    
+    let anySlotBetweenApplicants menteeSchedule hoursOfOverlap=
+        List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule hoursOfOverlap) mentorAvailabilities
 
-    List.exists(fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule) menteeAvailabilities
+    List.exists(fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule hoursOfOverlap) menteeAvailabilities
 
 let extractMatchingFsharpTopics (mentorFsharpTopics: FsharpTopic nel) (menteeFsharpTopics: FsharpTopic nel) =
     NonEmptyList.intersect mentorFsharpTopics menteeFsharpTopics
 
-let doesMenteeMatchMentorProfile (mentor: Mentor) (mentee: Mentee) =
-    let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule) ||> doScheduleOverlap
+let doesMenteeMatchMentorProfile (mentor: Mentor) (mentee: Mentee) (hoursOfOverlap: int)=
+    let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule, hoursOfOverlap) |||> doScheduleOverlap
     let hasAnyMatchingInterest = (mentor.AreasOfExpertise, mentee.TopicsOfInterest) ||> extractMatchingFsharpTopics |> Seq.length > 0
     
     foundScheduleOverlap && hasAnyMatchingInterest
 
-let findAllMatchingMenteesForMentor (mentor: Mentor) (mentees: Mentee list) =
+let findAllMatchingMenteesForMentor (mentor: Mentor) (mentees: Mentee list) (hoursOfOverlap: int) =
     mentees 
-    |> List.filter(fun mentee -> doesMenteeMatchMentorProfile mentor mentee)
+    |> List.filter(fun mentee -> doesMenteeMatchMentorProfile mentor mentee hoursOfOverlap)
     |> List.map(fun mentee ->  { Mentor = mentor; Mentee = mentee; MatchingFsharpInterests = extractMatchingFsharpTopics mentee.TopicsOfInterest mentor.AreasOfExpertise } )
 
 let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay =
@@ -71,18 +72,17 @@ let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: Cal
     (mentorAvailableDaysList, menteeAvailableDaysList)
     ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
     |> List.chooseDefault
-    |> NonEmptyList.ofList
 
-let canMatchMenteesWithMentors listOfMentors listOfMentees =
+let canMatchMenteesWithMentors listOfMentors listOfMentees hoursOfOverlap=
     listOfMentors
     |> List.exists(fun mentor ->
-        (mentor, listOfMentees)
-        ||> findAllMatchingMenteesForMentor
+        (mentor, listOfMentees, hoursOfOverlap)
+        |||> findAllMatchingMenteesForMentor
         |> fun matches -> List.isNotEmpty matches)
 
-let findAllPotentialMentorshipMatches mentors mentees=
+let findAllPotentialMentorshipMatches mentors mentees hoursOfOverlap =
     mentors 
-    |> List.map(fun mentor -> findAllMatchingMenteesForMentor mentor mentees)
+    |> List.map(fun mentor -> findAllMatchingMenteesForMentor mentor mentees hoursOfOverlap)
     |> List.concat
     |> List.map(fun mentorshipMatch -> 
         let orderedInterestBasedOnPopularity = mentorshipMatch.MatchingFsharpInterests |> List.sortByDescending(fun fsharpTopic -> fsharpTopic.PopularityWeight)
@@ -93,21 +93,26 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
     let prepareDataForMatching (potentialMatch: PotentialMentorshipMatch) (confirmedMatches: ConfirmedMentorshipApplication list) (potentialMatchesRemaining: PotentialMentorshipMatch list) =
         let mentee = potentialMatch.Mentee
         let mentor = potentialMatch.Mentor
-        let confirmedMentoshipMatch = {
-            Mentee = mentee
-            Mentor = mentor
-            FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
-            CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
-            MeetingTimes = generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
-        }
+        let sessionHours = generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
+        if sessionHours.Length > 0 then
+            let confirmedMentoshipMatch = {
+                MatchedMentee = mentee
+                MatchedMentor = mentor
+                FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
+                CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
+                MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail
+            }
 
-        let updatedMappings = matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
-        let updatedMatchedMentees = matchedMentees |> Set.add mentee
+            let updatedMappings = matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
+            let updatedMatchedMentees = matchedMentees |> Set.add mentee
 
-        (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
+            (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
+
+        else
+            (matches, matchedMentees, potentialMatchesRemaining)
 
     match potentialMatches with
-    | [] -> matches
+    | [] -> (matches, matchedMentees)
     | potentialMatch :: remainingPotentialMatches ->
         if matchedMentees.Contains potentialMatch.Mentee then
             createUniqueMentorshipMatches matches matchedMentees remainingPotentialMatches
@@ -127,18 +132,48 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
                 |||> prepareDataForMatching
                 |||> createUniqueMentorshipMatches
 
+let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
+    let (mentorshipPairingsMap, matchedMentees) = 
+        (plannerInputs.UnmatchedMentors, plannerInputs.UnmatchedMentees, plannerInputs.NumberOfHoursRequiredForOverlap)
+        |||> findAllPotentialMentorshipMatches
+        |> createUniqueMentorshipMatches Map.empty plannerInputs.MatchedMenteesSet
+    
+    let mentorshipPairings =
+        mentorshipPairingsMap
+        |> Map.map(fun _ confirmedMatches -> confirmedMatches)
+        |> Map.toList
+        |> List.map(fun (_, confirmedMatches) -> confirmedMatches)
+        |> List.concat
+
+    (mentorshipPairings, matchedMentees)
+
 [<RequireQualifiedAccess>]
 module Matchmaking =
     open System.IO
 
-    let tryGenerateMentorshipConfirmedApplicantList (mentees: Mentee list) (mentors: Mentor list) =
-        let atLeastOneMatchPossible = canMatchMenteesWithMentors mentors mentees
-        if atLeastOneMatchPossible <> true then
-            None
-        else
-            (mentors, mentees)
-            ||> findAllPotentialMentorshipMatches
-            |> createUniqueMentorshipMatches Map.empty Set.empty
-            |> Map.map(fun _ confirmedMatches -> confirmedMatches)
-            |> Map.toList
-            |> Some
+    let rec getMentorshipPairing (plannerInputs: MentorshipPlannerInputs) =
+        let filterToUnmatchedMentees (unmatchedMentees: Mentee list) (matchedMentees: Set<Mentee>) =
+            unmatchedMentees |> List.filter(fun mentee -> matchedMentees.Contains mentee <> true)
+
+        let filterToUnmatchedMentors (unmatchedMentors: Mentor list) (confirmedPairings: ConfirmedMentorshipApplication list) =
+            unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings |> List.exists(fun pairing -> pairing.MatchedMentor = unmatchedMentor) <> true)
+
+        match (plannerInputs.UnmatchedMentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
+        | ([], _) -> 
+            plannerInputs.ConfirmedMatches
+
+        | (_, 0) ->
+            plannerInputs.ConfirmedMatches
+
+        | _ ->
+            let (confirmedMatches, matchedMenteeSet) = getConfirmedMatchesFromPlanner plannerInputs
+            let updatedPlanner = 
+                { plannerInputs with
+                    UnmatchedMentees = filterToUnmatchedMentees plannerInputs.UnmatchedMentees plannerInputs.MatchedMenteesSet
+                    UnmatchedMentors = filterToUnmatchedMentors plannerInputs.UnmatchedMentors plannerInputs.ConfirmedMatches
+                    ConfirmedMatches = plannerInputs.ConfirmedMatches @ confirmedMatches
+                    MatchedMenteesSet = matchedMenteeSet
+                    NumberOfHoursRequiredForOverlap = plannerInputs.NumberOfHoursRequiredForOverlap - 1 }
+
+            getMentorshipPairing updatedPlanner
+

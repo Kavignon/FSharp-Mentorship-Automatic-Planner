@@ -68,8 +68,8 @@ type PotentialMentorshipMatch =
       MatchingFsharpInterests: FsharpTopic list }
 
 type ConfirmedMentorshipApplication =
-    { Mentee: Mentee
-      Mentor: Mentor
+    { MatchedMentee: Mentee
+      MatchedMentor: Mentor
       CouldMentorHandleMoreWork: bool
       FsharpTopic: FsharpTopic
       MeetingTimes: OverlapSchedule nel }
