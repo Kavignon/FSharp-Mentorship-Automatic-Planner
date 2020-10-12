@@ -28,6 +28,16 @@ module private Impl =
                 let offsetValue = if isCheckingForNextDay then 1 else -1
                 enum<DayOfWeek>(int givenDay + 1)
 
+        let convertWeekDayNameInDayOfWeek weekDayName =
+            match weekDayName with
+            | "Sunday" -> DayOfWeek.Sunday
+            | "Monday" -> DayOfWeek.Monday
+            | "Tuesday" -> DayOfWeek.Tuesday
+            | "Wednesday" -> DayOfWeek.Wednesday
+            | "Thursday" -> DayOfWeek.Thursday
+            | "Friday" -> DayOfWeek.Friday
+            | "Saturday" -> DayOfWeek.Saturday
+
         let generateMeetingHoursForOffsetDay (offsetDayMeetingHours: TimeSpan list) (isCheckingForNextDay: bool) =
             let dayOfTheWeek = convertWeekDayNameInDayOfWeek dayOfTheWeekName
             let nextDay = offsetGivenDayByOne dayOfTheWeek isCheckingForNextDay
@@ -35,7 +45,7 @@ module private Impl =
             { WeekDayName = nextDay.ToString(); UtcHours = offsetDayMeetingHours }
 
         let negativeOffsets = availableHoursUtc |> List.filter(fun x -> x.Days < 0)
-        let positiveOffsets = availableHoursUtc |> List.filter(fun x -> x.Days >= 1 && x.Hours >= 1)
+        let positiveOffsets = availableHoursUtc |> List.filter(fun x -> x.Days >= 1 && x.Hours >= 0)
 
         match (positiveOffsets, negativeOffsets) with
         | ([], []) -> 
@@ -43,7 +53,7 @@ module private Impl =
 
         | (nextDayHours, []) when nextDayHours.Length > 0 ->
             let nextDayMeetingHoursWithoutOffset = nextDayHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> nextDayHours |> List.exists(fun y -> y <> x))
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
             [
                 { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
                 generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true
@@ -51,27 +61,21 @@ module private Impl =
 
         | ([], previousDayHours) when previousDayHours.Length > 0 ->
             let previousDayMeetingHoursWithoutOffset = previousDayHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> previousDayHours |> List.exists(fun y -> y <> x))
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
             [
                 generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
                 { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
             ]
 
         | (nextDaysHours, previousHours) ->
-            let currentDayMeetingHours = 
-                availableHoursUtc 
-                |> List.filter(fun x -> 
-                    let givenHourNotInPreviousDay = previousHours |> List.exists(fun y -> y <> x) 
-                    let givenHourNotInNextDay = nextDaysHours |> List.exists(fun z -> z <> x)
-
-                    givenHourNotInNextDay && givenHourNotInPreviousDay
-                )
+            let currentDayMeetingHours = availableHoursUtc |> List.filter(fun x -> x.Days = 0)
+            let nextDayMeetingHoursWithoutOffset = nextDaysHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+            let previousDayMeetingHoursWithoutOffset = previousHours |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
             [
-                generateMeetingHoursForOffsetDay previousHours false
+                generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
                 { WeekDayName = dayOfTheWeekName; UtcHours = currentDayMeetingHours }
-                generateMeetingHoursForOffsetDay nextDaysHours true
+                generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true
             ]
-
 
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
@@ -84,16 +88,6 @@ module private Impl =
             | _ -> None
 
         let convertDateAndTimeToAvailability (weekDayAvailability: string) (availabilityIndex: int) (utcOffsetValue: TimeSpan) =
-            let convertWeekDayNameInDayOfWeek weekDayName =
-                match weekDayName with
-                | "Sunday" -> DayOfWeek.Sunday
-                | "Monday" -> DayOfWeek.Monday
-                | "Tuesday" -> DayOfWeek.Tuesday
-                | "Wednesday" -> DayOfWeek.Wednesday
-                | "Thursday" -> DayOfWeek.Thursday
-                | "Friday" -> DayOfWeek.Friday
-                | "Saturday" -> DayOfWeek.Saturday
-
             if String.IsNullOrEmpty weekDayAvailability then None
             else
                 let optAvailabilityRange = convertAvailabilityIndexToTimeRange availabilityIndex
@@ -152,20 +146,11 @@ module private Impl =
 
         { AvailableDays = NonEmptyList.ofList availableDays }
 
-
     let extractApplicantInformation (row: MentorshipInformation.Row) =
         { Fullname = row.``What is your full name (First and Last Name)``
           SlackName = row.``What is your fsharp.org slack name?``
           EmailAddress = row.``Email Address``
           MentorshipSchedule = extractApplicantSchedule row }
-
-    let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
-    let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
-    let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityWeight.Popular }
-    let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityWeight.Popular }
-    let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityWeight.Rare }
-    let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityWeight.Rare }
-    let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWeight.Rare }
 
     let extractFsharpTopic (row: MentorshipInformation.Row) =
         let convertCategoryNameToTopic categoryName =
@@ -176,6 +161,16 @@ module private Impl =
                 | "Contribute to an open source project" -> Some contributeToOSS
                 | "Machine learning" -> Some machineLearning
                 | "Contribute to the compiler" -> Some contributeToCompiler
+                | "Microservices"
+                | "Distributed systems"
+                | "Distributed System" -> Some distributedSystems
+                | "Uno"
+                | "Xamarin"
+                | "Mobile development"
+                | "Mobile Development"
+                | "Mobile"
+                | "Fabulous" -> Some mobileDevelopment
+                | "Domain modeling" -> Some domainModeling
                 | "Web and SAFE stack"
                 | "Web programming/SAFE stack"
                 | "Fable/Elmish"
