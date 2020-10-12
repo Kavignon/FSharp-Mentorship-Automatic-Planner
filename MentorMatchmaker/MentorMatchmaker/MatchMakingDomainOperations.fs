@@ -154,8 +154,10 @@ module Matchmaking =
         
         let dumpToFileApplicationData (application: ConfirmedMentorshipApplication) =
             $"
-                Mentor: {application.Mentor.MentorInformation.Fullname}
-                Mentee: {application.Mentee.MenteeInformation.Fullname}
+                Mentor: Name -> {application.Mentor.MentorInformation.Fullname} Email -> {application.Mentor.MentorInformation.EmailAddress}
+                Could have supported more students: {application.CouldMentorHandleMoreWork}
+                Max simultaneous students possible: {application.Mentor.SimultaneousMenteeCount}
+                Mentee: Name -> {application.Mentee.MenteeInformation.Fullname} Email -> {application.Mentee.MenteeInformation.EmailAddress}
                 Topic: {application.FsharpTopic.Name}
                 Possible meeting sessions: {dumpMeetingTimes application.MeetingTimes}
             "
