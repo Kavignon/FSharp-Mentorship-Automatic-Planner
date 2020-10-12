@@ -47,6 +47,11 @@ type Mentee =
     { MenteeInformation: PersonInformation
       TopicsOfInterest: FsharpTopic nel }
 
+type PotentialMentorshipMatch =
+    { Mentor: Mentor
+      Mentee: Mentee
+      MatchingFsharpInterests: FsharpTopic list }
+
 type ConfirmedMentorshipApplication =
     { Mentee: Mentee
       Mentor: Mentor
