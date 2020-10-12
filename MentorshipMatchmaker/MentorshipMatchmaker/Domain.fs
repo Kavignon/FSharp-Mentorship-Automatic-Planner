@@ -7,71 +7,91 @@ open FSharpPlus.Data
 open Infra
 open Utilities
 
-let checkForAvailabilityMatch mentorAvailability menteeAvailability =
-    let anyCommonSlot =
-        List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
-        |> List.length >= 3
-    mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && anyCommonSlot
 
-let doScheduleOverlap menteeSchedule mentorSchedule =
-    let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
-    let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
-    let anySlotBetweenApplicants menteeSchedule =
-        List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
+[<AutoOpen>]
+module private Impl =
 
-    List.exists(fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule) menteeAvailabilities
+    let checkForAvailabilityMatch mentorAvailability menteeAvailability =
+        let anyCommonSlot =
+            List.intersect menteeAvailability.UtcHours mentorAvailability.UtcHours
+            |> List.length >= 3
+        mentorAvailability.WeekDayName.Equals(menteeAvailability.WeekDayName) && anyCommonSlot
 
-let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
-    let fromRarestToCommonExpertiseAreas =
-        mentor.AreasOfExpertise
-        |> NonEmptyList.toList
-        |> List.sortByDescending(fun x -> x.PopularityWeight)
+    let doScheduleOverlap menteeSchedule mentorSchedule =
+        let menteeAvailabilities = menteeSchedule.AvailableDays |> NonEmptyList.toList
+        let mentorAvailabilities = mentorSchedule.AvailableDays |> NonEmptyList.toList
+        let anySlotBetweenApplicants menteeSchedule =
+            List.exists(fun mentorSchedule -> checkForAvailabilityMatch menteeSchedule mentorSchedule) mentorAvailabilities
 
-    fromRarestToCommonExpertiseAreas
-    |> List.map(fun expertiseArea ->
-        mentees |> List.map(fun mentee ->
-        let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule) ||> doScheduleOverlap
-        let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
+        List.exists(fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule) menteeAvailabilities
 
-        if foundMatchingMentee
-        then Some (expertiseArea, mentee)
-        else None)
-    )
-    |> List.concat
-    |> List.chooseDefault
-    |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
+    let findMatchingMenteeForMentor (mentor: Mentor) (mentees: Mentee list) =
+        let fromRarestToCommonExpertiseAreas =
+            mentor.AreasOfExpertise
+            |> NonEmptyList.toList
+            |> List.sortByDescending(fun x -> x.PopularityWeight)
 
-let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay =
-    let sameAvailableHours =
-        List.intersect menteeAvailableDay.UtcHours mentorAvailableDay.UtcHours
-        |> List.toConsecutivePairs
-        |> List.filter(fun (previousHour, currentHour) -> previousHour.Hours + 1 = currentHour.Hours)
-        |> List.map(fun (previousHour, currentHour) -> { UtcStartTime = previousHour; UtcEndTime = currentHour })
+        fromRarestToCommonExpertiseAreas
+        |> List.map(fun expertiseArea ->
+            mentees |> List.map(fun mentee ->
+            let foundScheduleOverlap = (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule) ||> doScheduleOverlap
+            let foundMatchingMentee = foundScheduleOverlap && mentee.TopicsOfInterest.Contains expertiseArea
 
-    if sameAvailableHours.Length = 0 then
-        None
-    else
-        Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+            if foundMatchingMentee
+            then Some (expertiseArea, mentee)
+            else None)
+        )
+        |> List.concat
+        |> List.chooseDefault
+        |> List.sortByDescending(fun (topic, _) -> topic.PopularityWeight)
 
-let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    let sortByWeekDayName nonEmptyAvailableDays =
-        nonEmptyAvailableDays
-        |> NonEmptyList.toList
-        |> List.sortBy(fun x -> x.WeekDayName)
+    let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay =
+        let sameAvailableHours =
+            List.intersect menteeAvailableDay.UtcHours mentorAvailableDay.UtcHours
+            |> List.toConsecutivePairs
+            |> List.filter(fun (previousHour, currentHour) -> previousHour.Hours + 1 = currentHour.Hours)
+            |> List.map(fun (previousHour, currentHour) -> { UtcStartTime = previousHour; UtcEndTime = currentHour })
 
-    let mentorAvailableDaysList = sortByWeekDayName mentorSchedule.AvailableDays
-    let menteeAvailableDaysList = sortByWeekDayName menteeSchedule.AvailableDays
-    let tryToGenerateOverlappingSchedule mentorAvailableDay = List.map(fun menteeAvailableDay -> tryFindSameAvailableHoursForApplicants mentorAvailableDay menteeAvailableDay) menteeAvailableDaysList
+        if sameAvailableHours.Length = 0 then
+            None
+        else
+            Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
 
-    mentorAvailableDaysList
-    |> List.map(fun mentorAvailableDay -> tryToGenerateOverlappingSchedule mentorAvailableDay)
-    |> List.concat
-    |> List.chooseDefault
+    let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
+        let sortByWeekDayName nonEmptyAvailableDays =
+            nonEmptyAvailableDays
+            |> NonEmptyList.toList
+            |> List.sortBy(fun x -> x.WeekDayName)
 
-let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
-    listOfMentors
-    |> List.map(fun mentor ->
-        let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
+        let mentorAvailableDaysList = sortByWeekDayName mentorSchedule.AvailableDays
+        let menteeAvailableDaysList = sortByWeekDayName menteeSchedule.AvailableDays
+        let tryToGenerateOverlappingSchedule mentorAvailableDay = List.map(fun menteeAvailableDay -> tryFindSameAvailableHoursForApplicants mentorAvailableDay menteeAvailableDay) menteeAvailableDaysList
+
+        mentorAvailableDaysList
+        |> List.map(fun mentorAvailableDay -> tryToGenerateOverlappingSchedule mentorAvailableDay)
+        |> List.concat
+        |> List.chooseDefault
+
+    let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
+        listOfMentors
+        |> List.map(fun mentor ->
+            let menteeMatches = (mentor, listOfMentees) ||> findMatchingMenteeForMentor
+            if menteeMatches.Length = 0 then None
+            else
+                let fsharpTopicAndMenteeTuple = menteeMatches.Head
+                let matchedMentee = snd fsharpTopicAndMenteeTuple
+                let fsharpTopic = fst fsharpTopicAndMenteeTuple
+                let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
+                Some
+                    { Mentee = matchedMentee
+                      Mentor = mentor
+                      FsharpTopic = fsharpTopic
+                      MeetingTimes = NonEmptyList.ofList matchingSchedule }
+        )
+        |> List.chooseDefault
+
+    let tryFindMatchingMenteeForMentorExpertise mentor mentees =
+        let menteeMatches = (mentor, mentees) ||> findMatchingMenteeForMentor
         if menteeMatches.Length = 0 then None
         else
             let fsharpTopicAndMenteeTuple = menteeMatches.Head
@@ -83,29 +103,13 @@ let findMentorMatchingMenteeInterest listOfMentors listOfMentees =
                   Mentor = mentor
                   FsharpTopic = fsharpTopic
                   MeetingTimes = NonEmptyList.ofList matchingSchedule }
-    )
-    |> List.chooseDefault
 
-let tryFindMatchingMenteeForMentorExpertise mentor mentees =
-    let menteeMatches = (mentor, mentees) ||> findMatchingMenteeForMentor
-    if menteeMatches.Length = 0 then None
-    else
-        let fsharpTopicAndMenteeTuple = menteeMatches.Head
-        let matchedMentee = snd fsharpTopicAndMenteeTuple
-        let fsharpTopic = fst fsharpTopicAndMenteeTuple
-        let matchingSchedule =  generateMeetingTimes matchedMentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
-        Some
-            { Mentee = matchedMentee
-              Mentor = mentor
-              FsharpTopic = fsharpTopic
-              MeetingTimes = NonEmptyList.ofList matchingSchedule }
-
-let canMatchMenteesWithMentors listOfMentors listOfMentees =
-    listOfMentors
-    |> List.exists(fun mentor ->
-        (mentor, listOfMentees)
-        ||> findMatchingMenteeForMentor
-        |> fun menteeMatches -> List.isNotEmpty menteeMatches)
+    let canMatchMenteesWithMentors listOfMentors listOfMentees =
+        listOfMentors
+        |> List.exists(fun mentor ->
+            (mentor, listOfMentees)
+            ||> findMatchingMenteeForMentor
+            |> fun menteeMatches -> List.isNotEmpty menteeMatches)
 
 [<RequireQualifiedAccess>]
 module Matchmaker =
