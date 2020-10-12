@@ -1,4 +1,4 @@
-﻿module MentorMatchmaker.DomainOperations
+module MentorMatchmaker.DomainOperations
 
 open System.Linq
 
@@ -46,21 +46,30 @@ let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay
     if sameAvailableHours.Length = 0 then 
         None
     else 
-        Some { Weekday = menteeAvailableDay.WeekDayName; MatchPeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+        Some { Weekday = menteeAvailableDay.WeekDayName; MatchedAvailablePeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
 
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
+    let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
+        let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
+        let availabilitiesList2 = availableDays2 |> NonEmptyList.toList
+
+        availabilitiesList1 |> List.filter(fun day -> availabilitiesList2 |> List.exists(fun x -> x.WeekDayName = day.WeekDayName))
+
     let sortByWeekDayName nonEmptyAvailableDays =
         nonEmptyAvailableDays
         |> NonEmptyList.toList
         |> List.sortBy(fun x -> x.WeekDayName)
 
-    let mentorAvailableDaysList = sortByWeekDayName mentorSchedule.AvailableDays
-    let menteeAvailableDaysList = sortByWeekDayName menteeSchedule.AvailableDays
-    let tryToGenerateOverlappingSchedule mentorAvailableDay = List.map(fun menteeAvailableDay -> tryFindSameAvailableHoursForApplicants mentorAvailableDay menteeAvailableDay) menteeAvailableDaysList
+    let mentorAvailableDaysList, menteeAvailableDaysList =
+        if mentorSchedule.AvailableDays.Length = menteeSchedule.AvailableDays.Length then
+            sortByWeekDayName mentorSchedule.AvailableDays, sortByWeekDayName menteeSchedule.AvailableDays
+        else
+            let mentorWeekSchedule = (mentorSchedule.AvailableDays, menteeSchedule.AvailableDays) ||> filterForSameWeekDay
+            let menteeWeekSchedule = (menteeSchedule.AvailableDays, mentorSchedule.AvailableDays) ||> filterForSameWeekDay
+            sortByWeekDayName (NonEmptyList.create mentorWeekSchedule.Head mentorWeekSchedule.Tail), sortByWeekDayName (NonEmptyList.create menteeWeekSchedule.Head menteeWeekSchedule.Tail)
 
-    mentorAvailableDaysList
-    |> List.map(fun mentorAvailableDay -> tryToGenerateOverlappingSchedule mentorAvailableDay)
-    |> List.concat
+    (mentorAvailableDaysList, menteeAvailableDaysList)
+    ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
     |> List.chooseDefault
     |> NonEmptyList.ofList
 
