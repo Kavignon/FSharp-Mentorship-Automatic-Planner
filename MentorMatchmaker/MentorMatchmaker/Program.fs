@@ -53,6 +53,11 @@ let main argv =
                         Error (NoMatchPossible csvDocumentPath)
                 
                     | Some mentorshipMatches ->
+                        mentorshipMatches
+                        |> List.map(fun (_, matches) -> matches)
+                        |> List.concat
+                        |> Matchmaking.dumpMatchingToFile
+
                         Ok mentorshipMatches
 
     let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
