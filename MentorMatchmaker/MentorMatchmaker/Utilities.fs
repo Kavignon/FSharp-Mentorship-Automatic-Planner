@@ -6,6 +6,11 @@ open FSharpPlus.Data
 
 type 'T nel = 'T NonEmptyList
 
+[<RequireQualifiedAccess>]
+module NonEmptyList =
+    let intersect (a: _ nel) (b: _ nel) =
+        Enumerable.Intersect(a, b)
+        |> List.ofSeq
 
 [<RequireQualifiedAccess>]
 module List =

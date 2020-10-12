@@ -8,8 +8,9 @@
 
   <ItemGroup>
     <Compile Include="Utilities.fs" />
-    <Compile Include="Infra.fs" />
-    <Compile Include="Domain.fs" />
+    <Compile Include="MatchMakingDomainTypes.fs" />
+    <Compile Include="MatchMakingInfrastructure.fs" />
+    <Compile Include="MatchMakingDomainOperations.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
