@@ -14,6 +14,8 @@ type PersonInformation =
       SlackName: string
       EmailAddress: string
       MentorshipSchedule: CalendarSchedule }
+with
+    member x.FirstName = x.Fullname.Split(' ').[0]
 
 type FSharpCategory =
     | IntroductionToFSharp
