@@ -150,7 +150,7 @@ let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
             Matches = Map.empty
             MatchedMentees = plannerInputs.MatchedMenteesSet
             MatchedMentors = plannerInputs.MatchedMentorSet
-            RemainingPotentialMatches = (plannerInputs.UnmatchedMentors, plannerInputs.UnmatchedMentees, plannerInputs.NumberOfHoursRequiredForOverlap) |||> findAllPotentialMentorshipMatches
+            RemainingPotentialMatches = (plannerInputs.FullMentorList, plannerInputs.FullMenteeList, plannerInputs.NumberOfHoursRequiredForOverlap) |||> findAllPotentialMentorshipMatches
         }        
         |> createUniqueMentorshipMatches
     
@@ -175,7 +175,7 @@ module Matchmaking =
         let filterToUnmatchedMentors (unmatchedMentors: Mentor list) (confirmedPairings: ConfirmedMentorshipApplication list) =
             unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings.Any(fun x -> x.MatchedMentor = unmatchedMentor) <> true)
 
-        match (plannerInputs.UnmatchedMentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
+        match (plannerInputs.FullMentorList, plannerInputs.NumberOfHoursRequiredForOverlap) with
         | ([], _) ->
             plannerInputs.ConfirmedMatches, plannerInputs
 
@@ -186,8 +186,8 @@ module Matchmaking =
             let (confirmedMatches, matchedMenteeSet, matchedMentorsSet) = getConfirmedMatchesFromPlanner plannerInputs
             let updatedPlanner = 
                 { plannerInputs with
-                    UnmatchedMentees = filterToUnmatchedMentees plannerInputs.UnmatchedMentees plannerInputs.MatchedMenteesSet
-                    UnmatchedMentors = filterToUnmatchedMentors plannerInputs.UnmatchedMentors plannerInputs.ConfirmedMatches
+                    FullMenteeList = filterToUnmatchedMentees plannerInputs.FullMenteeList plannerInputs.MatchedMenteesSet
+                    FullMentorList = filterToUnmatchedMentors plannerInputs.FullMentorList plannerInputs.ConfirmedMatches
                     ConfirmedMatches = plannerInputs.ConfirmedMatches @ confirmedMatches
                     MatchedMenteesSet = matchedMenteeSet
                     MatchedMentorSet = matchedMentorsSet
@@ -223,7 +223,8 @@ module Matchmaking =
                         {availabilities}
             "
         let transformedMenteesInUnmatchedApplicants = 
-            plannerInputs.UnmatchedMentees 
+            plannerInputs.FullMenteeList
+            |> List.filter(fun mentee -> plannerInputs.MatchedMenteesSet.Contains mentee <> true)
             |> List.map(fun x -> 
                 { 
                     Name = x.MenteeInformation.Fullname
@@ -235,7 +236,8 @@ module Matchmaking =
         )
 
         let transformedMentorsInUnmatchedApplicants = 
-            plannerInputs.UnmatchedMentors 
+            plannerInputs.FullMentorList
+            |> List.filter(fun mentor -> plannerInputs.MatchedMentorSet.Contains mentor <> true)
             |> List.map(fun x -> 
                 { 
                     Name = x.MentorInformation.Fullname
