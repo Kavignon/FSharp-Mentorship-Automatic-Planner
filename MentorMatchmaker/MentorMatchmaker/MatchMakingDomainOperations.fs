@@ -120,7 +120,7 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             updatedCollectionPairing
     
         else
-            collectingPairing
+            { collectingPairing with RemainingPotentialMatches = potentialMatchesRemaining.Tail }
     
     match collectingPairing.RemainingPotentialMatches with
     | [] -> collectingPairing
