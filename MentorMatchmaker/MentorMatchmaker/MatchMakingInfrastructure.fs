@@ -265,4 +265,4 @@ module CsvExtractor =
             ConfirmedMatches = []
             MatchedMenteesSet = Set.empty
             MatchedMentorSet = Set.empty
-            NumberOfHoursRequiredForOverlap = 4 }
+            NumberOfHoursRequiredForOverlap = 1 }
