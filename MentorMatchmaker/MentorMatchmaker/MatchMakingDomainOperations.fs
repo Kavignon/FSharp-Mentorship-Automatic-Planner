@@ -89,7 +89,14 @@ let findAllPotentialMentorshipMatches mentors mentees hoursOfOverlap =
         { mentorshipMatch with MatchingFsharpInterests = orderedInterestBasedOnPopularity }
     )
 
-let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipApplication list>) (matchedMentees: Set<Mentee>) (potentialMatches: PotentialMentorshipMatch list) =
+type CollectingMentorshipPairing = {
+    Matches: Map<Mentor, ConfirmedMentorshipApplication list>
+    MatchedMentees: Set<Mentee>
+    MatchedMentors: Set<Mentor>
+    RemainingPotentialMatches: PotentialMentorshipMatch list
+}
+
+let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPairing)  =
     let prepareDataForMatching (potentialMatch: PotentialMentorshipMatch) (confirmedMatches: ConfirmedMentorshipApplication list) (potentialMatchesRemaining: PotentialMentorshipMatch list) =
         let mentee = potentialMatch.Mentee
         let mentor = potentialMatch.Mentor
@@ -102,61 +109,71 @@ let rec createUniqueMentorshipMatches (matches: Map<Mentor, ConfirmedMentorshipA
                 CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
                 MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail
             }
-
-            let updatedMappings = matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
-            let updatedMatchedMentees = matchedMentees |> Set.add mentee
-
-            (updatedMappings, updatedMatchedMentees, potentialMatchesRemaining)
-
+    
+            let updatedCollectionPairing = {
+                Matches = collectingPairing.Matches |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
+                MatchedMentees =  collectingPairing.MatchedMentees |> Set.add mentee
+                MatchedMentors = collectingPairing.MatchedMentors |> Set.add mentor 
+                RemainingPotentialMatches = potentialMatchesRemaining |> List.filter(fun x -> x <> potentialMatch)
+            }
+    
+            updatedCollectionPairing
+    
         else
-            (matches, matchedMentees, potentialMatchesRemaining)
+            { collectingPairing with RemainingPotentialMatches = potentialMatchesRemaining.Tail }
+    
+    match collectingPairing.RemainingPotentialMatches with
+    | [] -> collectingPairing
 
-    match potentialMatches with
-    | [] -> (matches, matchedMentees)
     | potentialMatch :: remainingPotentialMatches ->
-        if matchedMentees.Contains potentialMatch.Mentee then
-            createUniqueMentorshipMatches matches matchedMentees remainingPotentialMatches
+        if collectingPairing.MatchedMentees.Contains potentialMatch.Mentee || collectingPairing.MatchedMentors.Contains potentialMatch.Mentor then
+            createUniqueMentorshipMatches { collectingPairing with RemainingPotentialMatches = remainingPotentialMatches }
         else
-            let optMentorWithMatches = matches |> Map.tryFind potentialMatch.Mentor
+            let optMentorWithMatches = collectingPairing.Matches |> Map.tryFind potentialMatch.Mentor
             match optMentorWithMatches with
             | Some confirmedMatches when confirmedMatches.Length >= (potentialMatch.Mentor.SimultaneousMenteeCount |> int) ->
-                createUniqueMentorshipMatches matches matchedMentees remainingPotentialMatches
+                createUniqueMentorshipMatches collectingPairing
             
             | Some confirmedMatches ->
-                (potentialMatch, confirmedMatches, remainingPotentialMatches) 
-                |||> prepareDataForMatching
-                |||> createUniqueMentorshipMatches
+                (potentialMatch, confirmedMatches, collectingPairing.RemainingPotentialMatches) 
+                |||> prepareDataForMatching 
+                |> createUniqueMentorshipMatches
 
             | None ->
-                (potentialMatch, [], remainingPotentialMatches) 
+                (potentialMatch, [], collectingPairing.RemainingPotentialMatches) 
                 |||> prepareDataForMatching
-                |||> createUniqueMentorshipMatches
+                |> createUniqueMentorshipMatches
 
 let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
-    let (mentorshipPairingsMap, matchedMentees) = 
-        (plannerInputs.UnmatchedMentors, plannerInputs.UnmatchedMentees, plannerInputs.NumberOfHoursRequiredForOverlap)
-        |||> findAllPotentialMentorshipMatches
-        |> createUniqueMentorshipMatches Map.empty plannerInputs.MatchedMenteesSet
+    let collectingPairings = 
+        {
+            Matches = Map.empty
+            MatchedMentees = plannerInputs.MatchedMenteesSet
+            MatchedMentors = plannerInputs.MatchedMentorSet
+            RemainingPotentialMatches = (plannerInputs.UnmatchedMentors, plannerInputs.UnmatchedMentees, plannerInputs.NumberOfHoursRequiredForOverlap) |||> findAllPotentialMentorshipMatches
+        }        
+        |> createUniqueMentorshipMatches
     
     let mentorshipPairings =
-        mentorshipPairingsMap
+        collectingPairings.Matches
         |> Map.map(fun _ confirmedMatches -> confirmedMatches)
         |> Map.toList
         |> List.map(fun (_, confirmedMatches) -> confirmedMatches)
         |> List.concat
 
-    (mentorshipPairings, matchedMentees)
+    (mentorshipPairings, collectingPairings.MatchedMentees, collectingPairings.MatchedMentors)
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
     open System.IO
+    open System.Linq
 
     let rec getMentorshipPairing (plannerInputs: MentorshipPlannerInputs) =
         let filterToUnmatchedMentees (unmatchedMentees: Mentee list) (matchedMentees: Set<Mentee>) =
             unmatchedMentees |> List.filter(fun mentee -> matchedMentees.Contains mentee <> true)
 
         let filterToUnmatchedMentors (unmatchedMentors: Mentor list) (confirmedPairings: ConfirmedMentorshipApplication list) =
-            unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings |> List.exists(fun pairing -> pairing.MatchedMentor = unmatchedMentor) <> true)
+            unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings.Any(fun x -> x.MatchedMentor = unmatchedMentor) <> true)
 
         match (plannerInputs.UnmatchedMentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
         | ([], _) ->
@@ -166,13 +183,14 @@ module Matchmaking =
             plannerInputs.ConfirmedMatches, plannerInputs
 
         | _ ->
-            let (confirmedMatches, matchedMenteeSet) = getConfirmedMatchesFromPlanner plannerInputs
+            let (confirmedMatches, matchedMenteeSet, matchedMentorsSet) = getConfirmedMatchesFromPlanner plannerInputs
             let updatedPlanner = 
                 { plannerInputs with
                     UnmatchedMentees = filterToUnmatchedMentees plannerInputs.UnmatchedMentees plannerInputs.MatchedMenteesSet
                     UnmatchedMentors = filterToUnmatchedMentors plannerInputs.UnmatchedMentors plannerInputs.ConfirmedMatches
                     ConfirmedMatches = plannerInputs.ConfirmedMatches @ confirmedMatches
                     MatchedMenteesSet = matchedMenteeSet
+                    MatchedMentorSet = matchedMentorsSet
                     NumberOfHoursRequiredForOverlap = plannerInputs.NumberOfHoursRequiredForOverlap - 1 }
 
             getMentorshipPairing updatedPlanner
