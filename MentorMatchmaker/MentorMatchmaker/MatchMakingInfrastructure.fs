@@ -15,6 +15,7 @@ type MentorshipPlannerInputs = {
     UnmatchedMentors: Mentor list
     ConfirmedMatches: ConfirmedMentorshipApplication list
     MatchedMenteesSet: Set<Mentee>
+    MatchedMentorSet: Set<Mentor>
     NumberOfHoursRequiredForOverlap: int
 }
 
@@ -263,4 +264,5 @@ module CsvExtractor =
             UnmatchedMentors = unmatchedMentors
             ConfirmedMatches = []
             MatchedMenteesSet = Set.empty
-            NumberOfHoursRequiredForOverlap = 8 }
+            MatchedMentorSet = Set.empty
+            NumberOfHoursRequiredForOverlap = 4 }
