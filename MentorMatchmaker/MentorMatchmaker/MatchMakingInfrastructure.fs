@@ -11,8 +11,8 @@ open DomainTypes
 type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
 
 type MentorshipPlannerInputs = {
-    UnmatchedMentees: Mentee list
-    UnmatchedMentors: Mentor list
+    FullMenteeList: Mentee list
+    FullMentorList: Mentor list
     ConfirmedMatches: ConfirmedMentorshipApplication list
     MatchedMenteesSet: Set<Mentee>
     MatchedMentorSet: Set<Mentor>
@@ -238,7 +238,7 @@ module private Impl =
                 let multipleMentorEntries = snd x
                 let mentorData = List.head multipleMentorEntries
                 { MentorInformation = extractApplicantInformation mentorData
-                  SimultaneousMenteeCount = multipleMentorEntries |> Seq.length |> uint
+                  SimultaneousMenteeCount = multipleMentorEntries |> Seq.filter(fun x -> String.IsNullOrEmpty x.``What topics do you feel comfortable mentoring?`` <> true) |> Seq.length |> uint
                   AreasOfExpertise = extractFsharpTopics multipleMentorEntries })
 
         let mentees =
@@ -260,8 +260,8 @@ module CsvExtractor =
             MentorshipInformation.Load csvDocumentFilePath
             |> Impl.extractPeopleInformation
 
-        {   UnmatchedMentees = unmatchedMentees
-            UnmatchedMentors = unmatchedMentors
+        {   FullMenteeList = unmatchedMentees
+            FullMentorList = unmatchedMentors
             ConfirmedMatches = []
             MatchedMenteesSet = Set.empty
             MatchedMentorSet = Set.empty
