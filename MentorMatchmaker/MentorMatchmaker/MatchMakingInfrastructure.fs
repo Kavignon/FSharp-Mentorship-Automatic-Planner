@@ -172,8 +172,9 @@ module private Impl =
                 let doesCategoryMatchKeyword (categoryName: string) (keywordList: string list) =
                     keywordList |> List.exists(fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase)) 
 
-                let category = if stringCategory.[0] = ' ' then stringCategory.Substring(1) else stringCategory
+                let category = match Seq.tryHead stringCategory with | Some ' ' -> stringCategory.Trim() | _ -> stringCategory
 
+                // This might be an interesting place to use active patterns
                 if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some introduction
 
@@ -204,15 +205,16 @@ module private Impl =
                 else
                     None
 
-            if String.IsNullOrEmpty categoryName then None
+            if String.IsNullOrEmpty categoryName then []
             elif categoryName.Contains(',') <> true then
-               Some [ matchOnStringCategory categoryName ]
+              match matchOnStringCategory categoryName with
+              | Some category -> [category]
+              | None -> []
             else
                 categoryName.Split(',')
-                |> List.ofArray
-                |> List.map(fun x -> if x.[0] = ' ' then x.Substring(1) else x)
-                |> List.map(fun x -> matchOnStringCategory x)
-                |> Some
+                |> Array.toList
+                |> List.map matchOnStringCategory
+                |> List.choose id
 
         if String.IsNullOrEmpty row.``What topic do you want to learn?`` then
             convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
@@ -223,10 +225,7 @@ module private Impl =
         let extractFsharpTopics (rows: MentorshipInformation.Row seq) =
             rows
             |> List.ofSeq
-            |> List.map extractFsharpTopic
-            |> List.chooseDefault
-            |> List.concat
-            |> List.chooseDefault
+            |> List.collect extractFsharpTopic
             |> NonEmptyList.ofList
 
         let mentors =
