@@ -20,6 +20,8 @@
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="FSharpPlus" Version="1.2.0-CI01240" />
     <PackageReference Include="FSharpx.Collections" Version="2.1.3" />
+    <PackageReference Include="ShellProgressBar" Version="5.0.0" />
+    <PackageReference Include="Spectre.Console" Version="0.31.0" />
   </ItemGroup>
 
   <ItemGroup>
