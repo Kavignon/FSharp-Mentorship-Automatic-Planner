@@ -73,6 +73,30 @@ let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: Cal
     ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
     |> List.chooseDefault
 
+
+let generateMeetingTimes2 (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
+    let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
+        let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
+        let availabilitiesList2 = availableDays2 |> NonEmptyList.toList
+
+        availabilitiesList1 |> List.filter(fun day -> availabilitiesList2 |> List.exists(fun x -> x.WeekDayName = day.WeekDayName))
+
+    let sortByWeekDayName availableDays =
+        availableDays
+        |> List.sortBy(fun x -> x.WeekDayName)
+
+    let mentorAvailableDaysList, menteeAvailableDaysList =
+        if mentorSchedule.AvailableDays.Length = menteeSchedule.AvailableDays.Length then
+            sortByWeekDayName (NonEmptyList.toList mentorSchedule.AvailableDays), sortByWeekDayName (NonEmptyList.toList menteeSchedule.AvailableDays)
+        else
+            let mentorWeekSchedule = (mentorSchedule.AvailableDays, menteeSchedule.AvailableDays) ||> filterForSameWeekDay
+            let menteeWeekSchedule = (menteeSchedule.AvailableDays, mentorSchedule.AvailableDays) ||> filterForSameWeekDay
+            sortByWeekDayName mentorWeekSchedule, sortByWeekDayName menteeWeekSchedule
+
+    (mentorAvailableDaysList, menteeAvailableDaysList)
+    ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
+    |> List.chooseDefault
+
 let canMatchMenteesWithMentors listOfMentors listOfMentees hoursOfOverlap=
     listOfMentors
     |> List.exists(fun mentor ->
@@ -203,6 +227,27 @@ module Matchmaking =
         Interests: FsharpTopic nel
         AvailableDays: DayAvailability nel
     }
+    
+    let createUnmatchedApplicantPairingPermutations (mentees: UnmatchedApplicant list) (mentors: UnmatchedApplicant list) =
+        let matchPermutations = 
+            [
+                for mentor in mentors do
+                    let menteeMatches = 
+                        [
+                            for mentee in mentees do
+                                let sessionHours = generateMeetingTimes2 { CalendarSchedule.AvailableDays = mentee.AvailableDays } { CalendarSchedule.AvailableDays = mentor.AvailableDays }
+                                if mentor.EmailAddress <> mentee.EmailAddress && sessionHours.Any() then
+                                    Some {| Mentor = mentor; Mentee = mentee; SessionHours = sessionHours |}
+                                else
+                                    None
+                        ]
+                        |> List.choose id
+
+                    {| Mentor = mentor; Mentees = menteeMatches |}
+            ]
+
+        matchPermutations
+        
 
     let dumpToFileUnmatchedApplicants (plannerInputs: MentorshipPlannerInputs) =
         let dumpToFileApplicationData (unmatchedApplicant: UnmatchedApplicant) =
@@ -248,6 +293,8 @@ module Matchmaking =
                 }
         )
 
+        (* Dump unmatched applications *)
+        
         let unmatchedApplicants = transformedMenteesInUnmatchedApplicants @ transformedMentorsInUnmatchedApplicants
 
         let fileContent = 
@@ -255,5 +302,53 @@ module Matchmaking =
             |> List.map(fun application -> $"{dumpToFileApplicationData application}")
             |> String.concat("\n")
 
-        System.IO.File.WriteAllText("applicationDataDump.txt", fileContent)
+        System.IO.File.WriteAllText("applicationDataDumpUnmatchedApplications.txt", fileContent)
+
+        (* Dump unmatched applications -- Pairing permutations *)
+        
+        let unmatchedApplicantsPairings = createUnmatchedApplicantPairingPermutations transformedMenteesInUnmatchedApplicants transformedMentorsInUnmatchedApplicants
+
+        let renderMentorPairingPermutations (permutations: {| Mentees: {| Mentee: UnmatchedApplicant; Mentor: UnmatchedApplicant; SessionHours: OverlapSchedule list |} list; Mentor: UnmatchedApplicant |}) =
+            let renderTopics applicant = 
+                let interests = applicant.Interests |> NonEmptyList.map(fun x -> x.Category.CategoryName) |> String.concat(", ")
+                $"Topics: {interests}\n"
+
+            let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
+                meetingTimes
+                |> NonEmptyList.map(fun meetingDay ->
+                    let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
+                    let aggregatedTimes = aggregatedTimes.Substring(2)
+                    $"{meetingDay.Weekday}: {aggregatedTimes}"
+                )
+                |> String.concat " ;"
+                
+            let renderMentee (mentee: UnmatchedApplicant) ((firstHour :: otherHours): OverlapSchedule list) =
+                let menteeData = $"\n    Mentee: {mentee.Name} ({mentee.EmailAddress})\n"
+                let menteeInterests = "    " + renderTopics mentee
+                let sessionHours = "        " + dumpMeetingTimes (NonEmptyList.create firstHour otherHours)
+
+                $"\n{menteeData}{menteeInterests}{sessionHours}"
+
+            let divider = "\n------------------------------------------------\n\n\n"
+            let header = $"Mentor: {permutations.Mentor.Name} ({permutations.Mentor.EmailAddress})\n"
+
+            let mentorTopics = renderTopics permutations.Mentor
+            
+            let menteeData = permutations.Mentees |> List.map (fun x -> renderMentee x.Mentee x.SessionHours) |> String.concat ", "
+
+            $"{divider}{header}{mentorTopics}{menteeData}"
+                
+
+
+        let pairingPermutationsFileContent =
+            unmatchedApplicantsPairings
+            |> List.map renderMentorPairingPermutations
+            |> String.concat ("\n")
+
+        
+        System.IO.File.WriteAllText("applicationDataDumpUnmatchedApplicationsPairingPermutations.txt", pairingPermutationsFileContent)
+
+
+
+
 
