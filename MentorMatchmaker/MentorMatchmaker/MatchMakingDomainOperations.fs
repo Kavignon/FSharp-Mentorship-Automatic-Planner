@@ -302,7 +302,7 @@ module Matchmaking =
             |> List.map(fun application -> $"{dumpToFileApplicationData application}")
             |> String.concat("\n")
 
-        System.IO.File.WriteAllText("applicationDataDumpUnmatchedApplications.txt", fileContent)
+        ("applicationDataDumpUnmatchedApplications.txt", fileContent) |> System.IO.File.WriteAllText
 
         (* Dump unmatched applications -- Pairing permutations *)
         
@@ -331,9 +331,7 @@ module Matchmaking =
 
             let divider = "\n------------------------------------------------\n\n\n"
             let header = $"Mentor: {permutations.Mentor.Name} ({permutations.Mentor.EmailAddress})\n"
-
             let mentorTopics = renderTopics permutations.Mentor
-            
             let menteeData = permutations.Mentees |> List.map (fun x -> renderMentee x.Mentee x.SessionHours) |> String.concat ", "
 
             $"{divider}{header}{mentorTopics}{menteeData}"
@@ -346,7 +344,7 @@ module Matchmaking =
             |> String.concat ("\n")
 
         
-        System.IO.File.WriteAllText("applicationDataDumpUnmatchedApplicationsPairingPermutations.txt", pairingPermutationsFileContent)
+        ("applicationDataDumpUnmatchedApplicationsPairingPermutations.txt", pairingPermutationsFileContent) |> System.IO.File.WriteAllText
 
 
 
