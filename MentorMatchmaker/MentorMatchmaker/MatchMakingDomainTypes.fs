@@ -28,6 +28,8 @@ type FSharpCategory =
     | MobileDevelopment
     | DomainModelling
     | UpForAnything
+    | DesigningWithTypes
+    | MetaProgramming
 with
     member x.CategoryName =
         match x with
@@ -37,10 +39,12 @@ with
         | ContributeToCompiler -> "Contribute to compiler"
         | WebDevelopment -> "Web development"
         | DistributedSystems -> "Distributed systems"
-        | DomainModelling -> "Domain modelling"
+        | DomainModelling -> "Domain modeling"
         | MobileDevelopment -> "Mobile development"
         | MachineLearning -> "Machine learning"
         | UpForAnything -> "I am up for anything"
+        | DesigningWithTypes -> "Designing with types"
+        | MetaProgramming -> "Meta programming"
 
 type PopularityWeight =
     | Common = 3
@@ -61,6 +65,10 @@ type Mentor =
 type Mentee =
     { MenteeInformation: PersonInformation
       TopicsOfInterest: FsharpTopic nel }
+
+type Applicants =
+    { Mentees: Mentee list
+      Mentors: Mentor list }
 
 type PotentialMentorshipMatch =
     { Mentor: Mentor
@@ -84,3 +92,5 @@ let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWei
 let distributedSystems = { Category = DistributedSystems; PopularityWeight = PopularityWeight.Rare }
 let mobileDevelopment = { Category = MobileDevelopment; PopularityWeight = PopularityWeight.Rare }
 let domainModeling = { Category = DomainModelling; PopularityWeight = PopularityWeight.Popular }
+let designingWithTypes = { Category = DesigningWithTypes; PopularityWeight = PopularityWeight.Rare }
+let metaProgramming = { Category = MetaProgramming; PopularityWeight = PopularityWeight.Rare }

@@ -11,8 +11,7 @@ open DomainTypes
 type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
 
 type MentorshipPlannerInputs = {
-    FullMenteeList: Mentee list
-    FullMentorList: Mentor list
+    Applicants: Applicants
     ConfirmedMatches: ConfirmedMentorshipApplication list
     MatchedMenteesSet: Set<Mentee>
     MatchedMentorSet: Set<Mentor>
@@ -158,13 +157,14 @@ module private Impl =
     let extractApplicantInformation (row: MentorshipInformation.Row) =
         { Fullname = row.``What is your full name (First and Last Name)``
           SlackName = row.``What is your fsharp.org slack name?``
-          EmailAddress = row.``Email Address``
+          EmailAddress = row.``Email address``
           MentorshipSchedule = extractApplicantSchedule row }
 
     let deepDiveInFSharpKeywords = ["Deep"; "dive"; "investment"; "better"]
-    let mobileDevelopmentKeywords = [ "Uno"; "Fabulous"; "Xamarin"; "Mobile"]
-    let distributedSystemKeywords = [ "Microservices"; "Distributed Systems"; "event sourcing"]
-    let webDevelopmentKeywords = ["Web"; "Elmish"; "Fable"; "SAFE"; "Giraffe"; "React"; "Feliz"; "MVC"]
+    let mobileDevelopmentKeywords = [ "Uno"; "Fabulous"; "Xamarin"; "Mobile"; "Mobile development"]
+    let distributedSystemKeywords = [ "Microservices"; "Distributed systems"; "event sourcing"]
+    let webDevelopmentKeywords = ["Web"; "Elmish"; "Fable"; "SAFE"; "Giraffe"; "React"; "Feliz"; "MVC"; "Web development / SAFE stack"]
+    let openSourceKeywords = ["Contribute to an open source project"; "open source"]
 
     let extractFsharpTopic (row: MentorshipInformation.Row) =
         let convertCategoryNameToTopic categoryName =
@@ -177,17 +177,26 @@ module private Impl =
                 if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some introduction
 
-                elif String.Equals("Contribute to an open source project", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some contributeToOSS
-
                 elif String.Equals("Machine learning", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some machineLearning
 
                 elif String.Equals("Contribute to the compiler", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some contributeToCompiler
 
+                elif String.Equals("Designing with types", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some designingWithTypes
+                    
+                elif String.Equals("Meta programming", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some metaProgramming
+
+                elif String.Equals("Domain modeling", category, StringComparison.InvariantCultureIgnoreCase) then
+                    Some domainModeling
+
                 elif category.Contains("up for anything", StringComparison.InvariantCultureIgnoreCase) then
                     Some upForAnything
+                    
+                elif doesCategoryMatchKeyword category openSourceKeywords then
+                    Some contributeToOSS
 
                 elif doesCategoryMatchKeyword category deepDiveInFSharpKeywords then
                     Some deepDive
@@ -251,18 +260,9 @@ module private Impl =
                 { MenteeInformation = extractApplicantInformation menteeData
                   TopicsOfInterest = extractFsharpTopics multipleMenteeEntries })
 
-        (mentors, mentees)
+        { Mentors = mentors; Mentees = mentees }
 
 [<RequireQualifiedAccess>]
 module CsvExtractor =
-    let extractMentorshipPlannerInputs (csvDocumentFilePath: string) =
-        let (unmatchedMentors, unmatchedMentees) =
-            MentorshipInformation.Load csvDocumentFilePath
-            |> Impl.extractPeopleInformation
-
-        {   FullMenteeList = unmatchedMentees
-            FullMentorList = unmatchedMentors
-            ConfirmedMatches = []
-            MatchedMenteesSet = Set.empty
-            MatchedMentorSet = Set.empty
-            NumberOfHoursRequiredForOverlap = 1 }
+    let extractApplicantsInformation (csvDocumentFilePath: string) =
+        MentorshipInformation.Load csvDocumentFilePath |> Impl.extractPeopleInformation

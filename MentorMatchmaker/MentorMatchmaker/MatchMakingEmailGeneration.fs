@@ -57,62 +57,61 @@ module private Implementation =
         |> NonEmptyList.map(fun meetingDay ->
             let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
             let aggregatedTimes = aggregatedTimes.Substring(2)
-            $"\n {meetingDay.Weekday}: {aggregatedTimes}"
+            $"{meetingDay.Weekday}: {aggregatedTimes}<br>"
         )
         |> String.concat("\t\t\t")
 
     let replaceMenteeTemplateWithTokens (menteeTokens: MenteeAndMentorPairTemplateTokens) =
         $"
-            Hello {menteeTokens.MentorFirstName} and {menteeTokens.MenteeFirstName},
+Hello {menteeTokens.MentorFirstName} and {menteeTokens.MenteeFirstName},<br><br>
  
-            Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.
+Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.<br><br>
 
-            We have paired the two of you together because we noticed you’re both interested in {menteeTokens.MentorshipInterest.Name} and that your availability matched. With that said, we are hoping for great things!
+We have paired the two of you together because we noticed you’re both interested in {menteeTokens.MentorshipInterest.Name} and that your availability matched. With that said, we are hoping for great things!<br><br>
 
-            As part of this round of mentorship, we’d recommend that you meet with your other half for at least one hour per week over the next {menteeTokens.LengthOfMentorshipInWeeks} weeks. We’d suggest that this be done either in person (if location allows), or via Skype, Google Hangout, Slack, etc. As a mentorship pair, the individual arrangements are left up to you to sort out.
+As part of this round of mentorship, we’d recommend that you meet with your other half for at least one hour per week over the next {menteeTokens.LengthOfMentorshipInWeeks} weeks. You can choose your prefered way of getting together virtually, whether that being via Skype, Google Hangout, Slack, etc. As a mentorship pair, the individual arrangements are left up to you to sort out.<br><br>
 
-            Please reach out to us via this email or education@fsharp.org if you have any questions or concerns.
+Please reach out to us via this email or education@fsharp.org if you have any questions or concerns.<br><br>
 
-            Feel free to take it from here.
+Feel free to take it from here.<br><br>
 
-            Mentee Details:
-            Mentee FSSF Slack username: {menteeTokens.MenteeFssfSlack}
-            Mentor FSSF Slack username: {menteeTokens.MentorFssfSlack}
-            Possible meeting sessions (in UTC): 
+<b>Mentee Details</b><br><br>
 
-            {dumpMeetingTimes menteeTokens.AvailableMeetingSessionsInUtc}
+Mentee FSSF Slack username: {menteeTokens.MenteeFssfSlack}<br>
+Mentor FSSF Slack username: {menteeTokens.MentorFssfSlack}<br><br>
 
-            Thank you, and happy learning!
+<b>Possible meeting sessions (in UTC)</b><br><br>
+{dumpMeetingTimes menteeTokens.AvailableMeetingSessionsInUtc}<br><br>
 
-            F# Software Foundation Mentorship Program
+Thank you, and happy learning!<br><br>
 
-            Mentor email: {menteeTokens.MentorEmailAddress}
-            Mentee email: {menteeTokens.MenteeEmailAddress}
+F# Software Foundation Mentorship Program<br><br>
+
+Mentor email: {menteeTokens.MentorEmailAddress}<br><br>
+Mentee email: {menteeTokens.MenteeEmailAddress}<br><br>
         "
 
     let replaceMentorTemplateWithTokens (mentorTokens: MentorEmailTemplateToken) =
         $"
-            Hello {mentorTokens.MentorFirstName},
+Hello {mentorTokens.MentorFirstName},<br><br>
 
-            Thank you so much for volunteering to be a mentor!
+Thank you so much for volunteering to be a mentor!<br><br>
 
-            You will find all the information of your mentee below in this e-mail, including his availability that matched when we were pairing you, together with a few instructions:
+You should have received an e-mail pairing you with your mentee, here we just want to provide you with a few helpful instructions:<br><br>
 
-            1. It is the responsibility of the mentor (you) to make first contact
+1. It is the responsibility of the mentor (you) to make first contact<br><br>
 
-            2. Suggest a first meeting: set a date/time (that is why you have your mentees matches on your schedule and his time zone) for the first meeting, in which you can plan the mentorship.
+2. Suggest a first meeting: set a date/time (that is why you have your mentees matches on your schedule and their time zone) for the first meeting, in which you can plan the mentorship.<br><br>
 
-            3. We’d recommend that you meet with your mentee for at least one hour per week over the next 6 weeks.
+3. We’d recommend that you meet with your mentee for at least one hour per week over the next 8 weeks.<br><br>
 
-            4.  Mentors received an invite to the private mentor-only slack channel. Feel free to chat about the mentorship experience with your fellow mentors here. Ask anything, whether it’s
+4.  Mentors will receive an invite to the private mentor-only slack channel. Feel free to chat about the mentorship experience with your fellow mentors here. Ask anything, whether it’s<br><br>
 
-            for additional learning resources that you would like to share with your learner, or for help with a question that  your learner asked that you’re not sure how to answer, or even to chat about the mentorship experience overall.
+for additional learning resources that you would like to share with your learner, or for help with a question that  your learner asked that you’re not sure how to answer, or even to chat about the mentorship experience overall.<br><br>
 
-            5. If your mentee has not responded within three days, or if your schedules don't match after all, please send us an email (or ping us in the mentor channel on slack)
+5. If your mentee has not responded within three days, or if your schedules don't match after all, please send us an email (or ping us in the mentor channel on slack). This way we can set you up with a replacement.<br><br>
 
-            6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which will follow shortly.
-            
-            Mentor email: {mentorTokens.MentorEmail}
+6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which you should have received.<br><br>
         "
 
     let formatEmailToSend (mentorshipEmailTemplateTokens: MentorshipEmailTemplateToken) : string =
@@ -126,10 +125,25 @@ module private Implementation =
 module EmailGenerationService =
     open Implementation
 
-    let dumpTemplateEmailsInFile (mentorshipMatch: ConfirmedMentorshipApplication) =
+    let generateEmailsForMatch (mentorshipMatch: ConfirmedMentorshipApplication) =
+        {|
+            MenteeEmail = transformIntoMenteeTokens mentorshipMatch |> formatEmailToSend
+            MentorEmail = transformIntoMentorTokens mentorshipMatch |> formatEmailToSend
+        |}
+
+
+    let generateEmailExamplesForMatch (mentorshipMatch: ConfirmedMentorshipApplication) =
         let fileContent =
             [ transformIntoMenteeTokens mentorshipMatch; transformIntoMentorTokens mentorshipMatch]
             |> List.map formatEmailToSend
             |> String.concat("\n")
+
+        fileContent
+
+    let generateEmailExamplesForMatches (matches: ConfirmedMentorshipApplication list) =
+        matches |> List.map generateEmailExamplesForMatch |> String.concat "/n"
+
+    let dumpTemplateEmailsInFile (mentorshipMatch: ConfirmedMentorshipApplication) =
+        let fileContent = generateEmailExamplesForMatch mentorshipMatch
 
         System.IO.File.AppendAllText("templateEmailToSendDump.txt", fileContent + System.Environment.NewLine)

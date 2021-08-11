@@ -7,6 +7,8 @@ open FSharpPlus.Data
 open Infra
 open Utilities
 open DomainTypes
+open EmailGeneration
+open System.Net.Mail
 
 let checkForAvailabilityMatch mentorAvailability menteeAvailability hoursOfOverlap =
     let anyCommonSlot =
@@ -174,7 +176,7 @@ let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
             Matches = Map.empty
             MatchedMentees = plannerInputs.MatchedMenteesSet
             MatchedMentors = plannerInputs.MatchedMentorSet
-            RemainingPotentialMatches = (plannerInputs.FullMentorList, plannerInputs.FullMenteeList, plannerInputs.NumberOfHoursRequiredForOverlap) |||> findAllPotentialMentorshipMatches
+            RemainingPotentialMatches = (plannerInputs.Applicants.Mentors, plannerInputs.Applicants.Mentees, plannerInputs.NumberOfHoursRequiredForOverlap) |||> findAllPotentialMentorshipMatches
         }        
         |> createUniqueMentorshipMatches
     
@@ -192,6 +194,62 @@ module Matchmaking =
     open System.IO
     open System.Linq
 
+    
+    // TODO : Should be private or whatever
+    // TODO : Get auth data from somewhere
+    let createSmtpClient () =
+        let client = new SmtpClient(@"smtp.gmail.com")
+    
+        client.UseDefaultCredentials <- false
+        client.EnableSsl <- true
+        client.Port <- 587
+        client.Credentials <- System.Net.NetworkCredential("mentorship@fsharp.org", "") // TODO : Password/credentials should be retrieved .gitignored settings file
+        client.DeliveryMethod <- SmtpDeliveryMethod.Network
+    
+        client
+
+
+
+    
+    // TODO: Could be fun to imrpove the backend and domain model by discerning between a unmatched and matched applicant. Plus removing this bool would make me feel a lot better.
+    type UnmatchedApplicant = {
+        Name: string
+        EmailAddress: string
+        IsMentor: bool
+        Interests: FsharpTopic nel
+        AvailableDays: DayAvailability nel
+    }
+
+    let generateUnmatchedApplicantsDump unmatchedApplicants =
+        let dumpToFileApplicationData (unmatchedApplicant: UnmatchedApplicant) =
+            let topics = unmatchedApplicant.Interests |> NonEmptyList.map(fun topic -> topic.Name) |> String.concat " ,"
+            let availabilities = 
+                unmatchedApplicant.AvailableDays
+                |> NonEmptyList.map(fun day ->
+                    let availableHours = day.UtcHours |> List.map(fun utc -> $"{utc.Hours}") |> String.concat " ,"
+                    $"{day.WeekDayName}: {availableHours}"
+                )
+                |> String.concat  ", "
+
+            let applicantType = if unmatchedApplicant.IsMentor then "Mentor" else "Mentee"
+            $"
+                {applicantType}: Name -> {unmatchedApplicant.Name} Email -> {unmatchedApplicant.EmailAddress}
+                Topics: {topics}
+                Available hours in UTC: 
+                        {availabilities}
+            "
+
+        unmatchedApplicants 
+        |> List.map(fun application -> $"{dumpToFileApplicationData application}")
+        |> String.concat("\n")
+
+    let createPlannerInputs (applicants: Applicants) =
+        {   Applicants = applicants
+            ConfirmedMatches = []
+            MatchedMenteesSet = Set.empty
+            MatchedMentorSet = Set.empty
+            NumberOfHoursRequiredForOverlap = 1 }
+
     let rec getMentorshipPairing (plannerInputs: MentorshipPlannerInputs) =
         let filterToUnmatchedMentees (unmatchedMentees: Mentee list) (matchedMentees: Set<Mentee>) =
             unmatchedMentees |> List.filter(fun mentee -> matchedMentees.Contains mentee <> true)
@@ -199,7 +257,7 @@ module Matchmaking =
         let filterToUnmatchedMentors (unmatchedMentors: Mentor list) (confirmedPairings: ConfirmedMentorshipApplication list) =
             unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings.Any(fun x -> x.MatchedMentor = unmatchedMentor) <> true)
 
-        match (plannerInputs.FullMentorList, plannerInputs.NumberOfHoursRequiredForOverlap) with
+        match (plannerInputs.Applicants.Mentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
         | ([], _) ->
             plannerInputs.ConfirmedMatches, plannerInputs
 
@@ -210,23 +268,16 @@ module Matchmaking =
             let (confirmedMatches, matchedMenteeSet, matchedMentorsSet) = getConfirmedMatchesFromPlanner plannerInputs
             let updatedPlanner = 
                 { plannerInputs with
-                    FullMenteeList = filterToUnmatchedMentees plannerInputs.FullMenteeList plannerInputs.MatchedMenteesSet
-                    FullMentorList = filterToUnmatchedMentors plannerInputs.FullMentorList plannerInputs.ConfirmedMatches
+                    Applicants = {
+                        Mentees = filterToUnmatchedMentees plannerInputs.Applicants.Mentees plannerInputs.MatchedMenteesSet
+                        Mentors = filterToUnmatchedMentors plannerInputs.Applicants.Mentors plannerInputs.ConfirmedMatches
+                    }
                     ConfirmedMatches = plannerInputs.ConfirmedMatches @ confirmedMatches
                     MatchedMenteesSet = matchedMenteeSet
                     MatchedMentorSet = matchedMentorsSet
                     NumberOfHoursRequiredForOverlap = plannerInputs.NumberOfHoursRequiredForOverlap - 1 }
 
             getMentorshipPairing updatedPlanner
-
-    // TODO: Could be fun to imrpove the backend and domain model by discerning between a unmatched and matched applicant. Plus removing this bool would make me feel a lot better.
-    type UnmatchedApplicant = {
-        Name: string
-        EmailAddress: string
-        IsMentor: bool
-        Interests: FsharpTopic nel
-        AvailableDays: DayAvailability nel
-    }
     
     let createUnmatchedApplicantPairingPermutations (mentees: UnmatchedApplicant list) (mentors: UnmatchedApplicant list) =
         let matchPermutations = 
@@ -247,29 +298,14 @@ module Matchmaking =
             ]
 
         matchPermutations
-        
 
-    let dumpToFileUnmatchedApplicants (plannerInputs: MentorshipPlannerInputs) =
-        let dumpToFileApplicationData (unmatchedApplicant: UnmatchedApplicant) =
-            let topics = unmatchedApplicant.Interests |> NonEmptyList.map(fun topic -> topic.Name) |> String.concat " ,"
-            let availabilities = 
-                unmatchedApplicant.AvailableDays
-                |> NonEmptyList.map(fun day ->
-                    let availableHours = day.UtcHours |> List.map(fun utc -> $"{utc.Hours}") |> String.concat " ,"
-                    $"{day.WeekDayName}: {availableHours}"
-                )
-                |> String.concat  ", "
+    let unmatchedApplicants (plannerInputs: MentorshipPlannerInputs) = 
+        { Mentees = plannerInputs.Applicants.Mentees |> List.filter(fun mentee -> plannerInputs.MatchedMenteesSet.Contains mentee <> true)
+          Mentors = plannerInputs.Applicants.Mentors |> List.filter(fun mentor -> plannerInputs.MatchedMentorSet.Contains mentor <> true) }
 
-            let applicantType = if unmatchedApplicant.IsMentor then "Mentor" else "Mentee"
-            $"
-                {applicantType}: Name -> {unmatchedApplicant.Name} Email -> {unmatchedApplicant.EmailAddress}
-                Topics: {topics}
-                Available hours in UTC: 
-                        {availabilities}
-            "
+    let mapToUnmatchedApplicants (applicants: Applicants) =
         let transformedMenteesInUnmatchedApplicants = 
-            plannerInputs.FullMenteeList
-            |> List.filter(fun mentee -> plannerInputs.MatchedMenteesSet.Contains mentee <> true)
+            applicants.Mentees
             |> List.map(fun x -> 
                 { 
                     Name = x.MenteeInformation.Fullname
@@ -277,12 +313,10 @@ module Matchmaking =
                     IsMentor = false
                     Interests = x.TopicsOfInterest
                     AvailableDays = x.MenteeInformation.MentorshipSchedule.AvailableDays
-                }
-        )
+                })
 
         let transformedMentorsInUnmatchedApplicants = 
-            plannerInputs.FullMentorList
-            |> List.filter(fun mentor -> plannerInputs.MatchedMentorSet.Contains mentor <> true)
+            applicants.Mentors
             |> List.map(fun x -> 
                 { 
                     Name = x.MentorInformation.Fullname
@@ -290,22 +324,29 @@ module Matchmaking =
                     IsMentor = true
                     Interests = x.AreasOfExpertise
                     AvailableDays = x.MentorInformation.MentorshipSchedule.AvailableDays
-                }
-        )
+                })
 
-        (* Dump unmatched applications *)
+        transformedMenteesInUnmatchedApplicants, transformedMentorsInUnmatchedApplicants
         
+    let generateUnmatchedApplicantsDumpFileContents (applicants: Applicants): string =
+        let transformedMenteesInUnmatchedApplicants, transformedMentorsInUnmatchedApplicants = mapToUnmatchedApplicants applicants
         let unmatchedApplicants = transformedMenteesInUnmatchedApplicants @ transformedMentorsInUnmatchedApplicants
+        let fileContent = generateUnmatchedApplicantsDump unmatchedApplicants
+        fileContent
 
-        let fileContent = 
-            unmatchedApplicants 
-            |> List.map(fun application -> $"{dumpToFileApplicationData application}")
-            |> String.concat("\n")
+    let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
+        meetingTimes
+        |> NonEmptyList.map(fun meetingDay ->
+            let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
+            let aggregatedTimes = aggregatedTimes.Substring(2)
+            $"{meetingDay.Weekday}: {aggregatedTimes}"
+        )
+        |> String.concat " ;"
 
-        ("applicationDataDumpUnmatchedApplications.txt", fileContent) |> System.IO.File.WriteAllText
 
-        (* Dump unmatched applications -- Pairing permutations *)
-        
+    let generateUnmatchedApplicantPairingPermutationsFileContents (applicants: Applicants): string =
+        let transformedMenteesInUnmatchedApplicants, transformedMentorsInUnmatchedApplicants = mapToUnmatchedApplicants applicants
+               
         let unmatchedApplicantsPairings = createUnmatchedApplicantPairingPermutations transformedMenteesInUnmatchedApplicants transformedMentorsInUnmatchedApplicants
 
         let renderMentorPairingPermutations (permutations: {| Mentees: {| Mentee: UnmatchedApplicant; Mentor: UnmatchedApplicant; SessionHours: OverlapSchedule list |} list; Mentor: UnmatchedApplicant |}) =
@@ -313,15 +354,7 @@ module Matchmaking =
                 let interests = applicant.Interests |> NonEmptyList.map(fun x -> x.Category.CategoryName) |> String.concat(", ")
                 $"Topics: {interests}\n"
 
-            let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
-                meetingTimes
-                |> NonEmptyList.map(fun meetingDay ->
-                    let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
-                    let aggregatedTimes = aggregatedTimes.Substring(2)
-                    $"{meetingDay.Weekday}: {aggregatedTimes}"
-                )
-                |> String.concat " ;"
-                
+                       
             let renderMentee (mentee: UnmatchedApplicant) ((firstHour :: otherHours): OverlapSchedule list) =
                 let menteeData = $"\n    Mentee: {mentee.Name} ({mentee.EmailAddress})\n"
                 let menteeInterests = "    " + renderTopics mentee
@@ -335,16 +368,177 @@ module Matchmaking =
             let menteeData = permutations.Mentees |> List.map (fun x -> renderMentee x.Mentee x.SessionHours) |> String.concat ", "
 
             $"{divider}{header}{mentorTopics}{menteeData}"
-                
-
-
+                       
         let pairingPermutationsFileContent =
             unmatchedApplicantsPairings
             |> List.map renderMentorPairingPermutations
             |> String.concat ("\n")
 
+        pairingPermutationsFileContent
+
+    let dumpToFileUnmatchedApplicants (plannerInputs: MentorshipPlannerInputs) =
+
+        let unmatched = unmatchedApplicants plannerInputs
+
+        (* Dump unmatched applications *)
+        let fileContent = generateUnmatchedApplicantsDumpFileContents unmatched
+
+        ("applicationDataDumpUnmatchedApplications.txt", fileContent) |> System.IO.File.WriteAllText
+
+        (* Dump unmatched applications -- Pairing permutations *)
+        let pairingPermutationsFileContent = generateUnmatchedApplicantPairingPermutationsFileContents unmatched
         
         ("applicationDataDumpUnmatchedApplicationsPairingPermutations.txt", pairingPermutationsFileContent) |> System.IO.File.WriteAllText
+
+
+    (* Service *)
+
+    let convertToJson csvDocumentPath =
+        csvDocumentPath
+        |> CsvExtractor.extractApplicantsInformation
+        |> FileManager.saveVersionedJson "applicants"
+
+
+    let createMatches applicantsJsonPath =
+        match FileManager.readJson<Applicants> applicantsJsonPath with
+        | Ok applicants ->
+            // Perform the matching, output the matches json
+            let mentorshipPairings, plannerInputs =
+                applicants
+                |> createPlannerInputs
+                |> getMentorshipPairing
+
+            let unmatched = unmatchedApplicants plannerInputs
+
+            let outputFileNameMatches = FileManager.saveVersionedJson "matches" mentorshipPairings
+            let outputFileNameUnmatches = FileManager.saveVersionedJson "unmatched" unmatched
+
+            Ok {| matches = outputFileNameMatches; unmatched = outputFileNameUnmatches |}
+
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+    let matchesToCsv matchesJsonPath =
+        match FileManager.readJson<ConfirmedMentorshipApplication list> matchesJsonPath with
+        | Ok matches ->
+            let fileContents =
+                [
+                    [ "Mentor"; "Mentee"; "Topic"; "Mentor could handle more" ]
+                    for pair in matches do
+                        [
+                            pair.MatchedMentor.MentorInformation.Fullname + $" ({pair.MatchedMentor.MentorInformation.EmailAddress}) ({pair.MatchedMentor.MentorInformation.SlackName})"
+                            pair.MatchedMentee.MenteeInformation.Fullname + $" ({pair.MatchedMentee.MenteeInformation.EmailAddress}) ({pair.MatchedMentee.MenteeInformation.SlackName})"
+                            pair.FsharpTopic.Category.CategoryName
+                            pair.CouldMentorHandleMoreWork.ToString()
+                            dumpMeetingTimes pair.MeetingTimes
+                        ]
+                ]
+                |> List.map (String.concat ";")
+                |> String.concat "\n"
+
+
+
+            let outputFileNameMatchesCsv = FileManager.saveVersionedCsv "matches" fileContents
+
+            Ok outputFileNameMatchesCsv
+
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+
+    let unmatchedDataDump applicantsJsonPath =
+        match FileManager.readJson<Applicants> applicantsJsonPath with
+        | Ok applicants ->
+            let fileContents = applicants |> generateUnmatchedApplicantsDumpFileContents
+
+            let outputFileName = FileManager.saveVersionedText "applicationDataDumpUnmatchedApplications" fileContents
+
+            Ok outputFileName
+
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+    let unmatchedPermutationsDataDump applicantsJsonPath =
+        match FileManager.readJson<Applicants> applicantsJsonPath with
+        | Ok applicants ->
+            let fileContents = applicants |> generateUnmatchedApplicantPairingPermutationsFileContents
+
+            let outputFileName = FileManager.saveVersionedText "applicationDataDumpUnmatchedApplicationsPairingPermutations" fileContents
+            
+            Ok outputFileName
+
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+    let generateExampleEmails matchesJsonPath = 
+        match FileManager.readJson<ConfirmedMentorshipApplication list> matchesJsonPath with
+        | Ok matches ->
+            let fileContents = matches |> EmailGenerationService.generateEmailExamplesForMatches
+
+            let outputFileName = FileManager.saveVersionedText "exampleEmailsDump" fileContents
+
+            Ok outputFileName
+
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+    
+    let sendEmailsMatched matchesJsonPath =
+        match FileManager.readJson<ConfirmedMentorshipApplication list> matchesJsonPath with
+        | Ok matches ->
+            // Do something
+            for pair in matches do
+                use client = createSmtpClient ()
+
+                let mails = EmailGenerationService.generateEmailsForMatch pair
+
+                // Send mentee email
+                use menteeMailMessage =
+                    new MailMessage(
+                        "mentorship@fsharp.org",
+                        pair.MatchedMentee.MenteeInformation.EmailAddress + "," + pair.MatchedMentor.MentorInformation.EmailAddress,
+                        @"FSSF Mentorship Program: Congratulations and meet your mentorship partner", // TODO generate correct title
+                        mails.MenteeEmail)
+
+                menteeMailMessage.IsBodyHtml <- true
+
+                client.Send menteeMailMessage
+
+                // Send mentor email
+
+                use mentorMailMessage = 
+                    new MailMessage(
+                        "mentorship@fsharp.org",
+                        pair.MatchedMentor.MentorInformation.EmailAddress,
+                        @"FSSF Mentorship Program: Get started as a mentor",  // TODO generate correct title
+                        mails.MentorEmail)
+                        
+                mentorMailMessage.IsBodyHtml <- true
+
+                client.Send mentorMailMessage
+
+            Ok ()
+    
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
+    let concatenateEmailsUnmatched applicantsJsonPath =
+        match FileManager.readJson<Applicants> applicantsJsonPath with
+        | Ok applicants ->
+            let fileContents = applicants.Mentees |> List.map (fun x -> x.MenteeInformation.EmailAddress) |> String.concat ";"
+            let ouputFileName = FileManager.saveVersionedText "unmatchedEmails" fileContents
+
+            Ok ouputFileName
+        | Error err ->
+            printfn $"Error: {err}"
+            Error err
+
 
 
 
