@@ -14,12 +14,3 @@ It inspects the data and breaks it down into the following components:
 -- The time zones of the applicants
 
 Once that's done, it will separate the applicants in two categories: mentees and mentors. It looks for applicants that share common interests and an overlapping schedule in UTC. After that, it only outputs unique pairings and identifies applicants that could not be matched. Usually, there will be more applicants that we can possibly matched.
-
-## From V0 to V1.
--- Making the console app more user-friendly.
--- Using linear programming (Flips library) to modelize the problem space and get optimal unique matches.
--- Have the tool send the pairing emails automatically.
--- Have the tool add mentors to the private mentors Slack channel automatically.
-
-## V2 Roadmap
--- Replace the Google Forms and convert the CLI into a React application (SAFE).
