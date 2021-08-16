@@ -4,17 +4,25 @@ open System
 
 open Utilities
 
-type DayAvailability = { WeekDayName: string; UtcHours: TimeSpan list }
+type DayAvailability =
+    { WeekDayName: string
+      UtcHours: TimeSpan list }
+
 type CalendarSchedule = { AvailableDays: DayAvailability nel }
-type MentoringSession = { UtcStartTime: TimeSpan; UtcEndTime: TimeSpan }
-type OverlapSchedule = { Weekday: string; MatchedAvailablePeriods: MentoringSession nel }
+
+type MentoringSession =
+    { UtcStartTime: TimeSpan
+      UtcEndTime: TimeSpan }
+
+type OverlapSchedule =
+    { Weekday: string
+      MatchedAvailablePeriods: MentoringSession nel }
 
 type PersonInformation =
     { Fullname: string
       SlackName: string
       EmailAddress: string
       MentorshipSchedule: CalendarSchedule }
-with
     member x.FirstName = x.Fullname.Split(' ').[0]
 
 type FSharpCategory =
@@ -28,7 +36,6 @@ type FSharpCategory =
     | MobileDevelopment
     | DomainModelling
     | UpForAnything
-with
     member x.CategoryName =
         match x with
         | IntroductionToFSharp -> "Introduction to F#"
@@ -50,7 +57,6 @@ type PopularityWeight =
 type FsharpTopic =
     { Category: FSharpCategory
       PopularityWeight: PopularityWeight }
-with
     member x.Name = x.Category.CategoryName
 
 type Mentor =
@@ -74,13 +80,42 @@ type ConfirmedMentorshipApplication =
       FsharpTopic: FsharpTopic
       MeetingTimes: OverlapSchedule nel }
 
-let introduction = { Category = IntroductionToFSharp; PopularityWeight = PopularityWeight.Common  }
-let deepDive = { Category = DeepDiveInFSharp; PopularityWeight = PopularityWeight.Popular }
-let contributeToOSS = { Category = ContributeToOpenSource; PopularityWeight = PopularityWeight.Popular }
-let webDevelopment = { Category = WebDevelopment; PopularityWeight = PopularityWeight.Popular }
-let contributeToCompiler = { Category = ContributeToCompiler; PopularityWeight = PopularityWeight.Rare }
-let machineLearning = { Category = MachineLearning; PopularityWeight = PopularityWeight.Rare }
-let upForAnything = { Category = UpForAnything; PopularityWeight = PopularityWeight.Rare }
-let distributedSystems = { Category = DistributedSystems; PopularityWeight = PopularityWeight.Rare }
-let mobileDevelopment = { Category = MobileDevelopment; PopularityWeight = PopularityWeight.Rare }
-let domainModeling = { Category = DomainModelling; PopularityWeight = PopularityWeight.Popular }
+let introduction =
+    { Category = IntroductionToFSharp
+      PopularityWeight = PopularityWeight.Common }
+
+let deepDive =
+    { Category = DeepDiveInFSharp
+      PopularityWeight = PopularityWeight.Popular }
+
+let contributeToOSS =
+    { Category = ContributeToOpenSource
+      PopularityWeight = PopularityWeight.Popular }
+
+let webDevelopment =
+    { Category = WebDevelopment
+      PopularityWeight = PopularityWeight.Popular }
+
+let contributeToCompiler =
+    { Category = ContributeToCompiler
+      PopularityWeight = PopularityWeight.Rare }
+
+let machineLearning =
+    { Category = MachineLearning
+      PopularityWeight = PopularityWeight.Rare }
+
+let upForAnything =
+    { Category = UpForAnything
+      PopularityWeight = PopularityWeight.Rare }
+
+let distributedSystems =
+    { Category = DistributedSystems
+      PopularityWeight = PopularityWeight.Rare }
+
+let mobileDevelopment =
+    { Category = MobileDevelopment
+      PopularityWeight = PopularityWeight.Rare }
+
+let domainModeling =
+    { Category = DomainModelling
+      PopularityWeight = PopularityWeight.Popular }

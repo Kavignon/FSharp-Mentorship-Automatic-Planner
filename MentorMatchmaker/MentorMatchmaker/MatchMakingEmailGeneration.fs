@@ -7,64 +7,68 @@ open MentorMatchmaker.DomainTypes
 
 module private Implementation =
     type MentorEmailTemplateToken =
-        {   MentorFirstName: string
-            LengthOfMentorshipInWeeks: int
-            MenteeFirstName: string
-            MentorEmail: string
-            FssfSlack: string
-            FsharpTopic: FsharpTopic }
+        { MentorFirstName: string
+          LengthOfMentorshipInWeeks: int
+          MenteeFirstName: string
+          MentorEmail: string
+          FssfSlack: string
+          FsharpTopic: FsharpTopic }
 
     type MenteeAndMentorPairTemplateTokens =
-        {   MenteeFirstName: string
-            MenteeFssfSlack: string
-            MentorFirstName: string
-            MentorFssfSlack: string
-            LengthOfMentorshipInWeeks: int
-            MentorshipInterest: FsharpTopic
-            MenteeEmailAddress: string
-            MentorEmailAddress: string
-            AvailableMeetingSessionsInUtc: OverlapSchedule nel }
+        { MenteeFirstName: string
+          MenteeFssfSlack: string
+          MentorFirstName: string
+          MentorFssfSlack: string
+          LengthOfMentorshipInWeeks: int
+          MentorshipInterest: FsharpTopic
+          MenteeEmailAddress: string
+          MentorEmailAddress: string
+          AvailableMeetingSessionsInUtc: OverlapSchedule nel }
 
     type MentorshipEmailTemplateToken =
         | Mentor of MentorEmailTemplateToken
         | MenteeAndMentorPair of MenteeAndMentorPairTemplateTokens
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
-        MenteeAndMentorPair {
-            MentorshipInterest = confirmedMatch.FsharpTopic
-            MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
-            MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
-            MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
-            MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
-            MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
-            MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
-            LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
-            AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes
-        }
+        MenteeAndMentorPair
+            { MentorshipInterest = confirmedMatch.FsharpTopic
+              MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
+              MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
+              MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
+              MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
+              MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
+              MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
+              LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
+              AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes }
 
     let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
-        Mentor {
-            MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
-            LengthOfMentorshipInWeeks = 8
-            MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
-            MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
-            FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
-            FsharpTopic = confirmedMatch.FsharpTopic
-        }
+        Mentor
+            { MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
+              LengthOfMentorshipInWeeks = 8
+              MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
+              MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
+              FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
+              FsharpTopic = confirmedMatch.FsharpTopic }
 
     let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
         meetingTimes
-        |> NonEmptyList.map(fun meetingDay ->
-            let aggregatedTimes = meetingDay.MatchedAvailablePeriods |> NonEmptyList.toList |> List.fold(fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}") ""
-            let aggregatedTimes = aggregatedTimes.Substring(2)
-            $"\n {meetingDay.Weekday}: {aggregatedTimes}"
-        )
-        |> String.concat("\t\t\t")
+        |> NonEmptyList.map
+            (fun meetingDay ->
+                let aggregatedTimes =
+                    meetingDay.MatchedAvailablePeriods
+                    |> NonEmptyList.toList
+                    |> List.fold
+                        (fun accumulatedTimes currentTime -> accumulatedTimes + $", {currentTime.UtcStartTime}")
+                        ""
+
+                let aggregatedTimes = aggregatedTimes.Substring(2)
+                $"\n {meetingDay.Weekday}: {aggregatedTimes}")
+        |> String.concat ("\t\t\t")
 
     let replaceMenteeTemplateWithTokens (menteeTokens: MenteeAndMentorPairTemplateTokens) =
         $"
             Hello {menteeTokens.MentorFirstName} and {menteeTokens.MenteeFirstName},
- 
+
             Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.
 
             We have paired the two of you together because we noticed you’re both interested in {menteeTokens.MentorshipInterest.Name} and that your availability matched. With that said, we are hoping for great things!
@@ -78,7 +82,7 @@ module private Implementation =
             Mentee Details:
             Mentee FSSF Slack username: {menteeTokens.MenteeFssfSlack}
             Mentor FSSF Slack username: {menteeTokens.MentorFssfSlack}
-            Possible meeting sessions (in UTC): 
+            Possible meeting sessions (in UTC):
 
             {dumpMeetingTimes menteeTokens.AvailableMeetingSessionsInUtc}
 
@@ -111,16 +115,14 @@ module private Implementation =
             5. If your mentee has not responded within three days, or if your schedules don't match after all, please send us an email (or ping us in the mentor channel on slack)
 
             6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which will follow shortly.
-            
+
             Mentor email: {mentorTokens.MentorEmail}
         "
 
     let formatEmailToSend (mentorshipEmailTemplateTokens: MentorshipEmailTemplateToken) : string =
         match mentorshipEmailTemplateTokens with
-        | MenteeAndMentorPair menteeTokens -> 
-            replaceMenteeTemplateWithTokens menteeTokens
-        | Mentor mentorTokens -> 
-            replaceMentorTemplateWithTokens mentorTokens
+        | MenteeAndMentorPair menteeTokens -> replaceMenteeTemplateWithTokens menteeTokens
+        | Mentor mentorTokens -> replaceMentorTemplateWithTokens mentorTokens
 
 [<RequireQualifiedAccess>]
 module EmailGenerationService =
@@ -128,8 +130,9 @@ module EmailGenerationService =
 
     let dumpTemplateEmailsInFile (mentorshipMatch: ConfirmedMentorshipApplication) =
         let fileContent =
-            [ transformIntoMenteeTokens mentorshipMatch; transformIntoMentorTokens mentorshipMatch]
+            [ transformIntoMenteeTokens mentorshipMatch
+              transformIntoMentorTokens mentorshipMatch ]
             |> List.map formatEmailToSend
-            |> String.concat("\n")
+            |> String.concat ("\n")
 
         System.IO.File.AppendAllText("templateEmailToSendDump.txt", fileContent + System.Environment.NewLine)
