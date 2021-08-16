@@ -1,11 +1,21 @@
-# The F# Software Foundation Mentorship Planner (FSSF Mentorship Planner)
+# FSSF Mentorship Planner
 
-## Context
-The mentorship initiative for the F# community has been a great education effort. It helps the community
-learn and share their expertise on functional programming. The issue with the program is the time it takes to put together the list of pairs of mentors and mentees. It would take 8 to 12 hours to sort through all the applications each round.
 
-## Purpose of the tool
-The FSSF Mentorship Planner is here to help the responsible of the mentorship program to bootstrap the program faster. It takes all the data that can be extracted from the Google Forms and generate the pairings automatically. Instead of taking hours, it takes a few moments after feeding the file with all the applications.
+## Description
+The *FSSF Mentorship Planner* is a tool used to pair mentors with
+mentees depending on their schedules and topics of interest. It is used
+by the [F# Software Foundation] as part of its [mentorship program].
+
+### About the F# Software Foundation
+The FSSF is a community-operated, not-for-profit organization dedicated
+to the growth, support, and education of a diverse community around the
+F# programming language.
+
+### About the Mentorship Program
+In order to further education, the FSSF operates a mentorship program
+that connects experienced F# developers to those wishing to improve
+their programming skills and learn the best practices in F#.
+
 
 ## How does the tool work?
 It inspects the data and breaks it down into the following components:
@@ -33,5 +43,7 @@ The program creates two files:
   without a match.
 
 
+[F# Software Foundation]: https://fsharp.org/
+[mentorship program]: https://fsharp.org/mentorship/
 [Git]: https://www.git-scm.com/
 [.NET 5.0 SDK]: https://dotnet.microsoft.com/download
