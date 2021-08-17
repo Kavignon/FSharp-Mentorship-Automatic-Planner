@@ -3,6 +3,7 @@
 open System
 
 open FSharp.Data
+open FSharpPlus
 open FSharpPlus.Data
 
 open Utilities
@@ -10,13 +11,14 @@ open DomainTypes
 
 type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
 
-type MentorshipPlannerInputs =
+type MentorshipPlannerInputs = 
     { FullMenteeList: Mentee list
       FullMentorList: Mentor list
       ConfirmedMatches: ConfirmedMentorshipApplication list
       MatchedMenteesSet: Set<Mentee>
       MatchedMentorSet: Set<Mentor>
-      NumberOfHoursRequiredForOverlap: int }
+      NumberOfHoursRequiredForOverlap: int
+      MaxTimezoneDifference: int }
 
 module private Impl =
     let availableLocalTimeHoursForMentorship =
@@ -103,22 +105,29 @@ module private Impl =
                 UtcHours = currentDayMeetingHours } ]
 
         | (nextDaysHours, previousHours) ->
-            let currentDayMeetingHours =
-                availableHoursUtc
-                |> List.filter (fun x -> x.Days = 0)
-
-            let nextDayMeetingHoursWithoutOffset =
-                nextDaysHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
-            let previousDayMeetingHoursWithoutOffset =
-                previousHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
+            let currentDayMeetingHours = 
+                availableHoursUtc 
+                |> List.filter(fun x -> x.Days = 0)
+                
+            let nextDayMeetingHoursWithoutOffset = 
+                nextDaysHours 
+                |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+                
+            let previousDayMeetingHoursWithoutOffset = 
+                previousHours 
+                |> List.map(fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
+                
             [ generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
               { WeekDayName = dayOfTheWeekName
                 UtcHours = currentDayMeetingHours }
               generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true ]
+    
+    let parseUTCOffset utcString =
+        utcString
+        |> String.trimStart "UTC"
+        |> String.replace " " String.Empty
+        |> tryParse
+        |> Option.defaultValue 0            
 
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
@@ -233,6 +242,7 @@ module private Impl =
         { Fullname = row.``What is your full name (First and Last Name)``
           SlackName = row.``What is your fsharp.org slack name?``
           EmailAddress = row.``Email Address``
+          UtcOffset = parseUTCOffset row.``What is your time zone?``
           MentorshipSchedule = extractApplicantSchedule row }
 
     let deepDiveInFSharpKeywords =
@@ -387,9 +397,9 @@ module private Impl =
 
 [<RequireQualifiedAccess>]
 module CsvExtractor =
-    let extractMentorshipPlannerInputs (csvDocumentFilePath: string) =
+    let extractMentorshipPlannerInputs (config: MatchmakerConfig) =
         let (unmatchedMentors, unmatchedMentees) =
-            MentorshipInformation.Load csvDocumentFilePath
+            MentorshipInformation.Load config.CSVPath
             |> Impl.extractPeopleInformation
 
         { FullMenteeList = unmatchedMentees
@@ -397,4 +407,5 @@ module CsvExtractor =
           ConfirmedMatches = []
           MatchedMenteesSet = Set.empty
           MatchedMentorSet = Set.empty
-          NumberOfHoursRequiredForOverlap = 1 }
+          NumberOfHoursRequiredForOverlap = 1 
+          MaxTimezoneDifference = config.MaxTimezoneDifference }
