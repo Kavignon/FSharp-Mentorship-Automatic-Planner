@@ -41,12 +41,13 @@ type InputValidationError =
     | InputMissing
     | RelativePathDoesNotExists of string
     | NoMatchPossible of string
-with
     member x.ErrorMessage =
         match x with
         | InputMissing -> "The provided argument is missing/empty. Please provide a path for the file."
-        | RelativePathDoesNotExists relativePath -> $"The relative path to the CSV document {relativePath} does not exists. Please check your input."
-        | NoMatchPossible relativePath -> $"The provided file {relativePath} couldn't produce a single match between a mentor and a mentee. Please consult your data."
+        | RelativePathDoesNotExists relativePath ->
+            $"The relative path to the CSV document {relativePath} does not exists. Please check your input."
+        | NoMatchPossible relativePath ->
+            $"The provided file {relativePath} couldn't produce a single match between a mentor and a mentee. Please consult your data."
 
 let handleFile path action =
     if String.IsNullOrEmpty path then
@@ -65,16 +66,15 @@ let main argv =
     // Don 't commit the file in the repository.
     let run (parsedArguments: ParseResults<CliArgument>) =
         match parsedArguments.GetAllResults() with
-        | [] -> 
-            Error InputMissing
+        | [] -> Error InputMissing
 
         | toolMode :: tail ->
             match toolMode with
-            | CreateMentorshipMatches(csvDocumentPath) ->
+            | CreateMentorshipMatches (csvDocumentPath) ->
                 if String.IsNullOrEmpty csvDocumentPath then
                     Error InputMissing
                 elif File.Exists(csvDocumentPath) <> true then
-                    Error (RelativePathDoesNotExists csvDocumentPath)
+                    Error(RelativePathDoesNotExists csvDocumentPath)
                 else
                     let mentorshipPairings, plannerInputs =
                         csvDocumentPath
@@ -131,12 +131,23 @@ let main argv =
 
                 Ok ()
 
-                
+    let errorHandler =
+        ProcessExiter(
+            colorizer =
+                function
+                | ErrorCode.HelpText -> None
+                | _ -> Some System.ConsoleColor.Red
+        )
 
+    let cliArgumentParser =
+        ArgumentParser.Create<CliArgument>(
+            checkStructure = false,
+            errorHandler = errorHandler,
+            programName = "Mentor matchmaker"
+        ) // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
 
-    let errorHandler = ProcessExiter(colorizer = function ErrorCode.HelpText -> None | _ -> Some System.ConsoleColor.Red)
-    let cliArgumentParser = ArgumentParser.Create<CliArgument>(checkStructure = false, errorHandler = errorHandler, programName = "Mentor matchmaker") // Settings checkStructure to false blocks Argu from checking if the DU is properly formed -- avoids performance hit via Reflection.
-    let resultFromRunningTool = (cliArgumentParser.ParseCommandLine argv) |> run
+    let resultFromRunningTool =
+        (cliArgumentParser.ParseCommandLine argv) |> run
 
     match resultFromRunningTool with
     | Error error ->
