@@ -48,6 +48,15 @@ with
         | RelativePathDoesNotExists relativePath -> $"The relative path to the CSV document {relativePath} does not exists. Please check your input."
         | NoMatchPossible relativePath -> $"The provided file {relativePath} couldn't produce a single match between a mentor and a mentee. Please consult your data."
 
+let handleFile path action =
+    if String.IsNullOrEmpty path then
+        Error InputMissing
+    elif File.Exists(path) <> true then
+        Error (RelativePathDoesNotExists path)
+    else
+        action path |> ignore
+
+        Ok ()
 
 [<EntryPoint>]
 let main argv =
@@ -83,85 +92,33 @@ let main argv =
                         Ok ()
 
             | ConvertCsvToJson csvDocumentPath ->
-                if String.IsNullOrEmpty csvDocumentPath then
-                    Error InputMissing
-                elif File.Exists(csvDocumentPath) <> true then
-                    Error (RelativePathDoesNotExists csvDocumentPath)
-                else
-                    Matchmaking.convertToJson csvDocumentPath |> ignore
-
-                    Ok ()
+                handleFile csvDocumentPath Matchmaking.convertToJson
 
             | CreateMatches applicantsJsonPath ->
-            
-                if String.IsNullOrEmpty applicantsJsonPath then
-                    Error InputMissing
-                elif File.Exists(applicantsJsonPath) <> true then
-                    Error (RelativePathDoesNotExists applicantsJsonPath)
-                else
-                    Matchmaking.createMatches applicantsJsonPath |> ignore
-
-                    Ok ()
+                handleFile applicantsJsonPath Matchmaking.createMatches
 
             | MatchesToCsv matchesJsonPath ->
-                if String.IsNullOrEmpty matchesJsonPath then
-                    Error InputMissing
-                elif File.Exists(matchesJsonPath) <> true then
-                    Error (RelativePathDoesNotExists matchesJsonPath)
-                else
-                    Matchmaking.matchesToCsv matchesJsonPath |> ignore
-
-                    Ok ()
-
+                handleFile matchesJsonPath Matchmaking.matchesToCsv
 
             | UnmatchedDataDump applicantsJsonPath ->
-                
-                if String.IsNullOrEmpty applicantsJsonPath then
-                    Error InputMissing
-                elif File.Exists(applicantsJsonPath) <> true then
-                    Error (RelativePathDoesNotExists applicantsJsonPath)
-                else
-                    Matchmaking.unmatchedDataDump applicantsJsonPath |> ignore
-
-                    Ok ()
+                handleFile applicantsJsonPath Matchmaking.unmatchedDataDump
 
             | UnmatchedPermutationsDataDump applicantsJsonPath ->
-                           
-                if String.IsNullOrEmpty applicantsJsonPath then
-                    Error InputMissing
-                elif File.Exists(applicantsJsonPath) <> true then
-                    Error (RelativePathDoesNotExists applicantsJsonPath)
-                else
-                    Matchmaking.unmatchedPermutationsDataDump applicantsJsonPath |> ignore
-
-                    Ok ()
+                handleFile applicantsJsonPath Matchmaking.unmatchedPermutationsDataDump
 
             | GenerateExampleEmails matchesJsonPath ->
-                
-                if String.IsNullOrEmpty matchesJsonPath then
-                    Error InputMissing
-                elif File.Exists(matchesJsonPath) <> true then
-                    Error (RelativePathDoesNotExists matchesJsonPath)
-                else
-                    Matchmaking.generateExampleEmails matchesJsonPath |> ignore
-
-                    Ok ()
+                handleFile matchesJsonPath Matchmaking.generateExampleEmails
 
             | FromCsvToExampleEmails csvDocumentPath ->
-                if String.IsNullOrEmpty csvDocumentPath then
-                    Error InputMissing
-                elif File.Exists(csvDocumentPath) <> true then
-                    Error (RelativePathDoesNotExists csvDocumentPath)
-                else
-                    Matchmaking.convertToJson csvDocumentPath
+                let composed path =
+                    Matchmaking.convertToJson path
                     |> Matchmaking.createMatches
                     |> Result.map (fun x ->
                         Matchmaking.unmatchedPermutationsDataDump x.unmatched |> ignore
                         Matchmaking.unmatchedDataDump x.unmatched |> ignore
                         Matchmaking.generateExampleEmails x.matches |> ignore)
-                    |> ignore
 
-                    Ok ()
+                handleFile csvDocumentPath composed
 
             | SendEmailsMatched matchesJsonPath ->
                 // Send mails to matched ppl

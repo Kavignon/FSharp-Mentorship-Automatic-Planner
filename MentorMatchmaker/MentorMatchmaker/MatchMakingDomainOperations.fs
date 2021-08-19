@@ -51,6 +51,7 @@ let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay
     else 
         Some { Weekday = menteeAvailableDay.WeekDayName; MatchedAvailablePeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
 
+// See also 'generateMeetingTimes2'
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
     let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
         let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
@@ -69,13 +70,15 @@ let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: Cal
         else
             let mentorWeekSchedule = (mentorSchedule.AvailableDays, menteeSchedule.AvailableDays) ||> filterForSameWeekDay
             let menteeWeekSchedule = (menteeSchedule.AvailableDays, mentorSchedule.AvailableDays) ||> filterForSameWeekDay
-            sortByWeekDayName (NonEmptyList.create mentorWeekSchedule.Head mentorWeekSchedule.Tail), sortByWeekDayName (NonEmptyList.create menteeWeekSchedule.Head menteeWeekSchedule.Tail)
+            sortByWeekDayName (NonEmptyList.create mentorWeekSchedule.Head mentorWeekSchedule.Tail), sortByWeekDayName (NonEmptyList.create menteeWeekSchedule.Head menteeWeekSchedule.Tail) // List.Head and List.Tail are not safe (throws on empty list)
 
     (mentorAvailableDaysList, menteeAvailableDaysList)
     ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
     |> List.chooseDefault
 
 
+// Simple copy of 'generateMeetingTimes' to avoid certain flows where 'generateMeetingTimes' throws on empty lists (on List.Head or List.Tail)
+// TODO : Should be refactored and unified again, but tested well so we don't create a regression bug (refactoring delayed for now since we are lacking tests)
 let generateMeetingTimes2 (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
     let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
         let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
@@ -437,8 +440,6 @@ module Matchmaking =
                 |> List.map (String.concat ";")
                 |> String.concat "\n"
 
-
-
             let outputFileNameMatchesCsv = FileManager.saveVersionedCsv "matches" fileContents
 
             Ok outputFileNameMatchesCsv
@@ -491,31 +492,27 @@ module Matchmaking =
     let sendEmailsMatched matchesJsonPath =
         match FileManager.readJson<ConfirmedMentorshipApplication list> matchesJsonPath with
         | Ok matches ->
-            // Do something
-            for pair in matches do
-                use client = createSmtpClient ()
+            use client = createSmtpClient ()
 
+            for pair in matches do
                 let mails = EmailGenerationService.generateEmailsForMatch pair
 
-                // Send mentee email
                 use menteeMailMessage =
                     new MailMessage(
                         "mentorship@fsharp.org",
                         pair.MatchedMentee.MenteeInformation.EmailAddress + "," + pair.MatchedMentor.MentorInformation.EmailAddress,
-                        @"FSSF Mentorship Program: Congratulations and meet your mentorship partner", // TODO generate correct title
+                        @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
                         mails.MenteeEmail)
 
                 menteeMailMessage.IsBodyHtml <- true
 
                 client.Send menteeMailMessage
 
-                // Send mentor email
-
                 use mentorMailMessage = 
                     new MailMessage(
                         "mentorship@fsharp.org",
                         pair.MatchedMentor.MentorInformation.EmailAddress,
-                        @"FSSF Mentorship Program: Get started as a mentor",  // TODO generate correct title
+                        @"FSSF Mentorship Program: Get started as a mentor",
                         mails.MentorEmail)
                         
                 mentorMailMessage.IsBodyHtml <- true
