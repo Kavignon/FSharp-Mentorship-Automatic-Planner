@@ -25,14 +25,14 @@ shell:
 ```
 git clone https://github.com/Kavignon/FSharp-Mentorship-Automatic-Planner.git
 cd FSharp-Mentorship-Automatic-Planner/MentorMatchmaker/MentorMatchmaker
-dotnet run --creatementorshipmatches file.csv
+dotnet run --creatementorshipmatches mentorship_data_file.csv
 ```
 
-The program creates two files:
-* `templateEmailToSendDump.txt` which contains, for each matching pair,
-  the emails to send to the mentor and the mentee;
-* `applicationDataDump.txt` which contains the list of applicants
-  without a match.
+The program creates two files containing:
+* the emails to send to the mentor and the mentee for each matching pair
+  `templateEmailToSendDump.txt`
+* the list of applicants without a match
+  `applicationDataDump.txt`
 
 
 [F# Software Foundation]: https://fsharp.org/
