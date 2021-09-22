@@ -8,6 +8,12 @@ type DayAvailability =
     { WeekDayName: string
       UtcHours: TimeSpan list }
 
+type MatchmakerConfig =
+    {
+        CSVPath: string
+        MaxTimezoneDifference: int
+    }
+
 type CalendarSchedule = { AvailableDays: DayAvailability nel }
 
 type MentoringSession =
@@ -22,6 +28,7 @@ type PersonInformation =
     { Fullname: string
       SlackName: string
       EmailAddress: string
+      UtcOffset: int
       MentorshipSchedule: CalendarSchedule }
     member x.FirstName = x.Fullname.Split(' ').[0]
 
