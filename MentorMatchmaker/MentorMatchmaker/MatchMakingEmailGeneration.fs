@@ -12,7 +12,7 @@ module private Implementation =
           MenteeFirstName: string
           MentorEmail: string
           FssfSlack: string
-          FsharpTopic: FsharpTopic }
+          FsharpTopic: FsharpTopic list }
 
     type MenteeAndMentorPairTemplateTokens =
         { MenteeFirstName: string
@@ -20,7 +20,7 @@ module private Implementation =
           MentorFirstName: string
           MentorFssfSlack: string
           LengthOfMentorshipInWeeks: int
-          MentorshipInterest: FsharpTopic
+          MentorshipInterest: FsharpTopic list
           MenteeEmailAddress: string
           MentorEmailAddress: string
           AvailableMeetingSessionsInUtc: OverlapSchedule nel }
@@ -28,6 +28,9 @@ module private Implementation =
     type MentorshipEmailTemplateToken =
         | Mentor of MentorEmailTemplateToken
         | MenteeAndMentorPair of MenteeAndMentorPairTemplateTokens
+
+    [<Literal>]
+    let LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         MenteeAndMentorPair
@@ -38,13 +41,13 @@ module private Implementation =
               MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
               MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
               MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
-              LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
+              LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
               AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes }
 
     let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         Mentor
             { MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
-              LengthOfMentorshipInWeeks = 8
+              LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
               FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
@@ -65,13 +68,18 @@ module private Implementation =
                 $"\n {meetingDay.Weekday}: {aggregatedTimes}")
         |> String.concat ("\t\t\t")
 
+    let formatListOfSharedInterests menteeTokens =
+        menteeTokens.MentorshipInterest
+        |> List.map (fun topic -> topic.Name)
+        |> String.concat ", "
+
     let replaceMenteeTemplateWithTokens (menteeTokens: MenteeAndMentorPairTemplateTokens) =
         $"
             Hello {menteeTokens.MentorFirstName} and {menteeTokens.MenteeFirstName},
 
             Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.
 
-            We have paired the two of you together because we noticed you’re both interested in {menteeTokens.MentorshipInterest.Name} and that your availability matched. With that said, we are hoping for great things!
+            We have paired the two of you together because we noticed you’re both interested in {formatListOfSharedInterests menteeTokens} and that your availability matched. With that said, we are hoping for great things!
 
             As part of this round of mentorship, we’d recommend that you meet with your other half for at least one hour per week over the next {menteeTokens.LengthOfMentorshipInWeeks} weeks. We’d suggest that this be done either in person (if location allows), or via Skype, Google Hangout, Slack, etc. As a mentorship pair, the individual arrangements are left up to you to sort out.
 

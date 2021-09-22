@@ -77,7 +77,7 @@ type ConfirmedMentorshipApplication =
     { MatchedMentee: Mentee
       MatchedMentor: Mentor
       CouldMentorHandleMoreWork: bool
-      FsharpTopic: FsharpTopic
+      FsharpTopic: FsharpTopic list
       MeetingTimes: OverlapSchedule nel }
 
 let introduction =
