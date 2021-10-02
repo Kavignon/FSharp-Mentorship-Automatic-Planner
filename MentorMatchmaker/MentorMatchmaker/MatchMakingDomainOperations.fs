@@ -173,17 +173,17 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             generateMeetingTimes mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule
 
         if sessionHours.Length > 0 then
-            let confirmedMentoshipMatch =
+            let confirmedMentorshipMatch =
                 { MatchedMentee = mentee
                   MatchedMentor = mentor
-                  FsharpTopic = potentialMatch.MatchingFsharpInterests.Head
+                  FsharpTopic = potentialMatch.MatchingFsharpInterests
                   CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
                   MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail }
 
             let updatedCollectionPairing =
                 { Matches =
                       collectingPairing.Matches
-                      |> Map.add mentor (confirmedMentoshipMatch :: confirmedMatches)
+                      |> Map.add mentor (confirmedMentorshipMatch :: confirmedMatches)
                   MatchedMentees = collectingPairing.MatchedMentees |> Set.add mentee
                   MatchedMentors = collectingPairing.MatchedMentors |> Set.add mentor
                   RemainingPotentialMatches =

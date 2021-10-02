@@ -12,7 +12,7 @@ module private Implementation =
           MenteeFirstName: string
           MentorEmail: string
           FssfSlack: string
-          FsharpTopic: FsharpTopic }
+          FsharpTopic: FsharpTopic list }
 
     type MenteeAndMentorPairTemplateTokens =
         { MenteeFirstName: string
@@ -20,7 +20,7 @@ module private Implementation =
           MentorFirstName: string
           MentorFssfSlack: string
           LengthOfMentorshipInWeeks: int
-          MentorshipInterest: FsharpTopic
+          MentorshipInterest: FsharpTopic list
           MenteeEmailAddress: string
           MentorEmailAddress: string
           AvailableMeetingSessionsInUtc: OverlapSchedule nel }
@@ -28,6 +28,9 @@ module private Implementation =
     type MentorshipEmailTemplateToken =
         | Mentor of MentorEmailTemplateToken
         | MenteeAndMentorPair of MenteeAndMentorPairTemplateTokens
+
+    [<Literal>]
+    let LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         MenteeAndMentorPair
@@ -38,13 +41,13 @@ module private Implementation =
               MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
               MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
               MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
-              LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
+              LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
               AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes }
 
     let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         Mentor
             { MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
-              LengthOfMentorshipInWeeks = 8
+              LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
               FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
@@ -63,15 +66,18 @@ module private Implementation =
         )
         |> String.concat("\t\t\t")
 
+    let formatListOfSharedInterests menteeTokens =
+        menteeTokens.MentorshipInterest
+        |> List.map (fun topic -> topic.Name)
+        |> String.concat ", "
+
     let replaceMenteeTemplateWithTokens (menteeTokens: MenteeAndMentorPairTemplateTokens) =
         $"
 Hello {menteeTokens.MentorFirstName} and {menteeTokens.MenteeFirstName},<br><br>
  
 Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.<br><br>
 
-We have paired the two of you together because we noticed you’re both interested in {menteeTokens.MentorshipInterest.Name} and that your availability matched. With that said, we are hoping for great things!<br><br>
-
-As part of this round of mentorship, we’d recommend that you meet with your other half for at least one hour per week over the next {menteeTokens.LengthOfMentorshipInWeeks} weeks. You can choose your prefered way of getting together virtually, whether that being via Skype, Google Hangout, Slack, etc. As a mentorship pair, the individual arrangements are left up to you to sort out.<br><br>
+We have paired the two of you together because we noticed you’re both interested in {formatListOfSharedInterests menteeTokens} and that your availability matched. With that said, we are hoping for great things!
 
 Please reach out to us via this email or education@fsharp.org if you have any questions or concerns.<br><br>
 
@@ -113,13 +119,9 @@ for additional learning resources that you would like to share with your learner
 
 5. If your mentee has not responded within three days, or if your schedules don't match after all, please send us an email (or ping us in the mentor channel on slack). This way we can set you up with a replacement.<br><br>
 
-<<<<<<< HEAD
-6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which you should have received.<br><br>
-=======
-            6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which will follow shortly.
+6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which will follow shortly.
 
-            Mentor email: {mentorTokens.MentorEmail}
->>>>>>> 831e05a7724886985c3e1157c3acf9d8935a4dd3
+Mentor email: {mentorTokens.MentorEmail}
         "
 
     let formatEmailToSend (mentorshipEmailTemplateTokens: MentorshipEmailTemplateToken) : string =

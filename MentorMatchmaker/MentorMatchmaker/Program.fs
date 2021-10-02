@@ -77,9 +77,8 @@ let main argv =
                     Error(RelativePathDoesNotExists csvDocumentPath)
                 else
                     let mentorshipPairings, plannerInputs =
-                        csvDocumentPath
-                        |> CsvExtractor.extractApplicantsInformation
-                        |> Matchmaking.createPlannerInputs
+                        Path.GetFullPath(csvDocumentPath)
+                        |> CsvExtractor.extractMentorshipPlannerInputs
                         |> Matchmaking.getMentorshipPairing
 
                     match mentorshipPairings with
