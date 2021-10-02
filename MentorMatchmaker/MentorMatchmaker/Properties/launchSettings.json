@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MentorMatchmaker": {
+      "commandName": "Project",
+      "commandLineArgs": "--matchestocsv \"matches.json\""
+    }
+  }
+}

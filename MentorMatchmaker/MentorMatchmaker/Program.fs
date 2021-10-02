@@ -6,16 +6,36 @@ open MentorMatchmaker.Infra
 open MentorMatchmaker.EmailGeneration
 
 open Argu
+open MentorMatchmaker.DomainTypes
+open System.Net.Mail
 
 [<CliPrefix(CliPrefix.DoubleDash)>]
 [<NoAppSettings>]
 type private CliArgument =
     | CreateMentorshipMatches of csvDocumentPath: string
+    | ConvertCsvToJson of csvDocumentPath: string
+    | CreateMatches of applicantsJsonPath: string
+    | MatchesToCsv of matchesJsonPath: string
+    | UnmatchedDataDump of applicantsJsonPath: string
+    | UnmatchedPermutationsDataDump of applicantsJsonPath: string
+    | GenerateExampleEmails of matchesJsonPath: string
+    | FromCsvToExampleEmails of csvDocumentPath: string
+    | SendEmailsMatched of matchesJsonPath: string
+    | ConcatenateEmailsUnmatched of applicantsJsonPath: string
+with
     interface IArgParserTemplate with
         member cliArg.Usage =
             match cliArg with
-            | CreateMentorshipMatches _ ->
-                "The relative path to the CSV document containing the current round's information with all the applicants' data."
+            | CreateMentorshipMatches _ -> "Provide relative path the CSV document containing the current's round information with all the applicant's data."
+            | ConvertCsvToJson _ -> "Provide relative path the CSV document containing the current's round information with all the applicant's data."
+            | CreateMatches _ -> "Provide a relative path to the JSON document with applicant data."
+            | MatchesToCsv _ -> "Provides a summary of the matches in CSV form."
+            | UnmatchedDataDump _ -> "Provide a relative path to the JSON document with applicant data."
+            | UnmatchedPermutationsDataDump _ -> "Provide a relative path to the JSON document with applicant data."
+            | GenerateExampleEmails _ -> "Provide a relative path to the JSON document with matches data."
+            | FromCsvToExampleEmails _ -> "Executes a lot of steps in sequence, itermediately writing ot files."
+            | SendEmailsMatched _ -> "Send out e-mails to matches mentors and mentees."
+            | ConcatenateEmailsUnmatched _ -> "Provides a concatenated string of e-mail address that can be used to send a batch e-mail to all unmatched mentees."
 
 type InputValidationError =
     | InputMissing
@@ -28,6 +48,16 @@ type InputValidationError =
             $"The relative path to the CSV document {relativePath} does not exists. Please check your input."
         | NoMatchPossible relativePath ->
             $"The provided file {relativePath} couldn't produce a single match between a mentor and a mentee. Please consult your data."
+
+let handleFile path action =
+    if String.IsNullOrEmpty path then
+        Error InputMissing
+    elif File.Exists(path) <> true then
+        Error (RelativePathDoesNotExists path)
+    else
+        action path |> ignore
+
+        Ok ()
 
 [<EntryPoint>]
 let main argv =
@@ -52,9 +82,53 @@ let main argv =
                         |> Matchmaking.getMentorshipPairing
 
                     match mentorshipPairings with
-                    | [] -> Error(NoMatchPossible csvDocumentPath)
+                    | [] ->
+                        Error (NoMatchPossible csvDocumentPath)
+                
+                    | _ ->
+                        mentorshipPairings |> List.map EmailGenerationService.dumpTemplateEmailsInFile |> ignore
+                        plannerInputs |> Matchmaking.dumpToFileUnmatchedApplicants
+                        Ok ()
 
-                    | _ -> Ok(mentorshipPairings, plannerInputs)
+            | ConvertCsvToJson csvDocumentPath ->
+                handleFile csvDocumentPath Matchmaking.convertToJson
+
+            | CreateMatches applicantsJsonPath ->
+                handleFile applicantsJsonPath Matchmaking.createMatches
+
+            | MatchesToCsv matchesJsonPath ->
+                handleFile matchesJsonPath Matchmaking.matchesToCsv
+
+            | UnmatchedDataDump applicantsJsonPath ->
+                handleFile applicantsJsonPath Matchmaking.unmatchedDataDump
+
+            | UnmatchedPermutationsDataDump applicantsJsonPath ->
+                handleFile applicantsJsonPath Matchmaking.unmatchedPermutationsDataDump
+
+            | GenerateExampleEmails matchesJsonPath ->
+                handleFile matchesJsonPath Matchmaking.generateExampleEmails
+
+            | FromCsvToExampleEmails csvDocumentPath ->
+                let composed path =
+                    Matchmaking.convertToJson path
+                    |> Matchmaking.createMatches
+                    |> Result.map (fun x ->
+                        Matchmaking.unmatchedPermutationsDataDump x.unmatched |> ignore
+                        Matchmaking.unmatchedDataDump x.unmatched |> ignore
+                        Matchmaking.generateExampleEmails x.matches |> ignore)
+
+                handleFile csvDocumentPath composed
+
+            | SendEmailsMatched matchesJsonPath ->
+                // Send mails to matched ppl
+                Matchmaking.sendEmailsMatched matchesJsonPath |> ignore
+
+                Ok ()
+                
+            | ConcatenateEmailsUnmatched applicantsJsonPath ->
+                Matchmaking.concatenateEmailsUnmatched applicantsJsonPath |> ignore
+
+                Ok ()
 
     let errorHandler =
         ProcessExiter(
@@ -78,12 +152,5 @@ let main argv =
     | Error error ->
         printfn $"{error.ErrorMessage}"
         -1
-    | Ok (mentorshipPairings, plannerInputs) ->
-        mentorshipPairings
-        |> List.map EmailGenerationService.dumpTemplateEmailsInFile
-        |> ignore
-
-        plannerInputs
-        |> Matchmaking.dumpToFileUnmatchedApplicants
-
+    | Ok _ ->
         0
