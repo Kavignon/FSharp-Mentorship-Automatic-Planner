@@ -34,7 +34,7 @@ module private Implementation =
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         MenteeAndMentorPair
-            { MentorshipInterest = confirmedMatch.FsharpTopic
+            { MentorshipInterest = confirmedMatch.FsharpTopics
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
               MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
@@ -51,7 +51,7 @@ module private Implementation =
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
               FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
-              FsharpTopic = confirmedMatch.FsharpTopic }
+              FsharpTopic = confirmedMatch.FsharpTopics }
 
     let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
         meetingTimes

@@ -6,8 +6,6 @@ open MentorMatchmaker.Infra
 open MentorMatchmaker.EmailGeneration
 
 open Argu
-open MentorMatchmaker.DomainTypes
-open System.Net.Mail
 
 [<CliPrefix(CliPrefix.DoubleDash)>]
 [<NoAppSettings>]
@@ -78,7 +76,7 @@ let main argv =
                 else
                     let mentorshipPairings, plannerInputs =
                         Path.GetFullPath(csvDocumentPath)
-                        |> CsvExtractor.extractMentorshipPlannerInputs
+                        |> CsvExtractor.extractApplicantsInformation
                         |> Matchmaking.getMentorshipPairing
 
                     match mentorshipPairings with

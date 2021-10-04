@@ -176,7 +176,7 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             let confirmedMentorshipMatch =
                 { MatchedMentee = mentee
                   MatchedMentor = mentor
-                  FsharpTopic = potentialMatch.MatchingFsharpInterests
+                  FsharpTopics = potentialMatch.MatchingFsharpInterests
                   CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
                   MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail }
 
@@ -249,13 +249,9 @@ let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
-    open System.IO
-    open System.Linq
-
     
-    // TODO : Should be private or whatever
     // TODO : Get auth data from somewhere
-    let createSmtpClient () =
+    let private createSmtpClient () =
         let client = new SmtpClient(@"smtp.gmail.com")
     
         client.UseDefaultCredentials <- false
@@ -496,7 +492,7 @@ module Matchmaking =
                         [
                             pair.MatchedMentor.MentorInformation.Fullname + $" ({pair.MatchedMentor.MentorInformation.EmailAddress}) ({pair.MatchedMentor.MentorInformation.SlackName})"
                             pair.MatchedMentee.MenteeInformation.Fullname + $" ({pair.MatchedMentee.MenteeInformation.EmailAddress}) ({pair.MatchedMentee.MenteeInformation.SlackName})"
-                            pair.FsharpTopic.Category.CategoryName
+                            pair.FsharpTopics |> List.map (fun x -> x.Name) |> String.concat ", "
                             pair.CouldMentorHandleMoreWork.ToString()
                             dumpMeetingTimes pair.MeetingTimes
                         ]

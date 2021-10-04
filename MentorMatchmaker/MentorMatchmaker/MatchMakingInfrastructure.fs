@@ -405,4 +405,9 @@ module private Impl =
 [<RequireQualifiedAccess>]
 module CsvExtractor =
     let extractApplicantsInformation (csvDocumentFilePath: string) =
-        MentorshipInformation.Load csvDocumentFilePath |> Impl.extractPeopleInformation
+        {   
+            Applicants = csvDocumentFilePath |> MentorshipInformation.Load |> Impl.extractPeopleInformation
+            ConfirmedMatches = []
+            MatchedMenteesSet = Set.empty
+            MatchedMentorSet = Set.empty
+            NumberOfHoursRequiredForOverlap = 1 }
