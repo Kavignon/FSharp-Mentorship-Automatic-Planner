@@ -4,6 +4,7 @@ open FSharpPlus.Data
 
 open MentorMatchmaker.Utilities
 open MentorMatchmaker.DomainTypes
+open System.Net.Mail
 
 module private Implementation =
     type MentorEmailTemplateToken =
@@ -139,13 +140,36 @@ module EmailGenerationService =
             MentorEmail = transformIntoMentorTokens mentorshipMatch |> formatEmailToSend
         |}
 
+    let sendEmailToPairApplicant (smtpClient: SmtpClient) (confirmedPairing: ConfirmedMentorshipApplication) =
+        let mails = generateEmailsForMatch confirmedPairing
+        use menteeMailMessage =
+            new MailMessage(
+                "mentorship@fsharp.org",
+                confirmedPairing.MatchedMentee.MenteeInformation.EmailAddress + "," + confirmedPairing.MatchedMentor.MentorInformation.EmailAddress,
+                @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
+                mails.MenteeEmail)
+
+        menteeMailMessage.IsBodyHtml <- true
+
+        smtpClient.Send menteeMailMessage
+
+        use mentorMailMessage = 
+            new MailMessage(
+                "mentorship@fsharp.org",
+                confirmedPairing.MatchedMentor.MentorInformation.EmailAddress,
+                @"FSSF Mentorship Program: Get started as a mentor",
+                mails.MentorEmail)
+                
+        mentorMailMessage.IsBodyHtml <- true
+
+        smtpClient.Send mentorMailMessage
 
     let generateEmailExamplesForMatch (mentorshipMatch: ConfirmedMentorshipApplication) =
         let fileContent =
             [ transformIntoMenteeTokens mentorshipMatch
               transformIntoMentorTokens mentorshipMatch ]
             |> List.map formatEmailToSend
-            |> String.concat ("\n")
+            |> String.concat "\n"
 
         fileContent
 

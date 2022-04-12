@@ -23,7 +23,7 @@ module private Impl =
         |> List.map (fun x -> TimeSpan(x, 0, 0))
 
     let splitStringAndRemoveDelimiters (stringInput: string) =
-        stringInput.Split(',')
+        stringInput.Split([|','; ';'|])
         |> List.ofArray
         |> List.map (fun x -> x.Replace(" ", ""))
 
@@ -71,11 +71,11 @@ module private Impl =
             |> List.filter (fun x -> x.Days >= 1 && x.Hours >= 0)
 
         match (positiveOffsets, negativeOffsets) with
-        | ([], []) ->
+        | [], [] ->
             [ { WeekDayName = dayOfTheWeekName
                 UtcHours = availableHoursUtc } ]
 
-        | (nextDayHours, []) when nextDayHours.Length > 0 ->
+        | nextDayHours, [] when nextDayHours.Length > 0 ->
             let nextDayMeetingHoursWithoutOffset =
                 nextDayHours
                 |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
@@ -88,7 +88,7 @@ module private Impl =
                 UtcHours = currentDayMeetingHours }
               generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true ]
 
-        | ([], previousDayHours) when previousDayHours.Length > 0 ->
+        | [], previousDayHours when previousDayHours.Length > 0 ->
             let previousDayMeetingHoursWithoutOffset =
                 previousDayHours
                 |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
@@ -101,7 +101,7 @@ module private Impl =
               { WeekDayName = dayOfTheWeekName
                 UtcHours = currentDayMeetingHours } ]
 
-        | (nextDaysHours, previousHours) ->
+        | nextDaysHours, previousHours ->
             let currentDayMeetingHours =
                 availableHoursUtc
                 |> List.filter (fun x -> x.Days = 0)
@@ -171,7 +171,7 @@ module private Impl =
                         availabilityRange
                         |> List.map (fun x -> x.Add(utcOffsetValue))
 
-                    if weekDayAvailability.Contains(',') <> true then
+                    if weekDayAvailability.Contains(';') <> true then
                         (weekDayAvailability, availableRangeInUtc)
                         ||> distributeOffsetHoursToSeparateDays
                         |> Some
@@ -281,7 +281,7 @@ module private Impl =
                     else
                         stringCategory
 
-                if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
+                if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) ||  category.Contains("beginner", StringComparison.InvariantCultureIgnoreCase)  then
                     Some introduction
 
                 elif
@@ -309,7 +309,7 @@ module private Impl =
                 elif String.Equals("Domain modeling", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some domainModeling
 
-                elif category.Contains("up for anything", StringComparison.InvariantCultureIgnoreCase) then
+                elif category.Equals("up for anything", StringComparison.InvariantCultureIgnoreCase) || category.Contains("All of the above", StringComparison.InvariantCultureIgnoreCase) then
                     Some upForAnything
                     
                 elif doesCategoryMatchKeyword category openSourceKeywords then
@@ -328,7 +328,7 @@ module private Impl =
                     Some webDevelopment
 
                 else
-                    None
+                    Some upForAnything
 
             if String.IsNullOrEmpty categoryName then
                 None

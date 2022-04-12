@@ -251,7 +251,7 @@ let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
 module Matchmaking =
     
     // TODO : Get auth data from somewhere
-    let private createSmtpClient () =
+    let createSmtpClient () =
         let client = new SmtpClient(@"smtp.gmail.com")
     
         client.UseDefaultCredentials <- false
@@ -321,14 +321,14 @@ module Matchmaking =
             unmatchedMentors |> List.filter(fun unmatchedMentor -> confirmedPairings.Any(fun x -> x.MatchedMentor = unmatchedMentor) <> true)
 
         match (plannerInputs.Applicants.Mentors, plannerInputs.NumberOfHoursRequiredForOverlap) with
-        | ([], _) ->
+        | [], _ ->
             plannerInputs.ConfirmedMatches, plannerInputs
 
-        | (_, 0) ->
+        | _, 0 ->
             plannerInputs.ConfirmedMatches, plannerInputs
 
         | _ ->
-            let (confirmedMatches, matchedMenteeSet, matchedMentorsSet) = getConfirmedMatchesFromPlanner plannerInputs
+            let confirmedMatches, matchedMenteeSet, matchedMentorsSet = getConfirmedMatchesFromPlanner plannerInputs
             let updatedPlanner = 
                 { plannerInputs with
                     Applicants = {
@@ -435,7 +435,7 @@ module Matchmaking =
         let pairingPermutationsFileContent =
             unmatchedApplicantsPairings
             |> List.map renderMentorPairingPermutations
-            |> String.concat ("\n")
+            |> String.concat "\n"
 
         pairingPermutationsFileContent
 
@@ -547,37 +547,13 @@ module Matchmaking =
         | Error err ->
             printfn $"Error: {err}"
             Error err
-
-    
+        
     let sendEmailsMatched matchesJsonPath =
         match FileManager.readJson<ConfirmedMentorshipApplication list> matchesJsonPath with
         | Ok matches ->
             use client = createSmtpClient ()
 
-            for pair in matches do
-                let mails = EmailGenerationService.generateEmailsForMatch pair
-
-                use menteeMailMessage =
-                    new MailMessage(
-                        "mentorship@fsharp.org",
-                        pair.MatchedMentee.MenteeInformation.EmailAddress + "," + pair.MatchedMentor.MentorInformation.EmailAddress,
-                        @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
-                        mails.MenteeEmail)
-
-                menteeMailMessage.IsBodyHtml <- true
-
-                client.Send menteeMailMessage
-
-                use mentorMailMessage = 
-                    new MailMessage(
-                        "mentorship@fsharp.org",
-                        pair.MatchedMentor.MentorInformation.EmailAddress,
-                        @"FSSF Mentorship Program: Get started as a mentor",
-                        mails.MentorEmail)
-                        
-                mentorMailMessage.IsBodyHtml <- true
-
-                client.Send mentorMailMessage
+            matches |> List.iter(fun confirmedPairing -> EmailGenerationService.sendEmailToPairApplicant client confirmedPairing)
 
             Ok ()
     
@@ -595,9 +571,3 @@ module Matchmaking =
         | Error err ->
             printfn $"Error: {err}"
             Error err
-
-
-
-
-
-

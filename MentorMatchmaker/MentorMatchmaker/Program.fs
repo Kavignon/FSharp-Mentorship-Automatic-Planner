@@ -6,6 +6,7 @@ open MentorMatchmaker.Infra
 open MentorMatchmaker.EmailGeneration
 
 open Argu
+open System.Net.Mail
 
 [<CliPrefix(CliPrefix.DoubleDash)>]
 [<NoAppSettings>]
@@ -68,7 +69,7 @@ let main argv =
 
         | toolMode :: tail ->
             match toolMode with
-            | CreateMentorshipMatches (csvDocumentPath) ->
+            | CreateMentorshipMatches csvDocumentPath ->
                 if String.IsNullOrEmpty csvDocumentPath then
                     Error InputMissing
                 elif File.Exists(csvDocumentPath) <> true then
@@ -84,8 +85,10 @@ let main argv =
                         Error (NoMatchPossible csvDocumentPath)
                 
                     | _ ->
-                        mentorshipPairings |> List.map EmailGenerationService.dumpTemplateEmailsInFile |> ignore
+                        mentorshipPairings |> List.iter EmailGenerationService.dumpTemplateEmailsInFile
                         plannerInputs |> Matchmaking.dumpToFileUnmatchedApplicants
+                        use client = Matchmaking.createSmtpClient()
+                        mentorshipPairings |> List.iter(fun confirmedPairing -> EmailGenerationService.sendEmailToPairApplicant client confirmedPairing)
                         Ok ()
 
             | ConvertCsvToJson csvDocumentPath ->
