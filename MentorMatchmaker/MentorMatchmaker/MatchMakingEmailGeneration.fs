@@ -12,7 +12,7 @@ module private Implementation =
           MenteeFirstName: string
           MentorEmail: string
           FssfSlack: string
-          FsharpTopic: FsharpTopic list }
+          FsharpTopics: FsharpTopic list }
 
     type MenteeAndMentorPairTemplateTokens =
         { MenteeFirstName: string
@@ -20,7 +20,7 @@ module private Implementation =
           MentorFirstName: string
           MentorFssfSlack: string
           LengthOfMentorshipInWeeks: int
-          MentorshipInterest: FsharpTopic list
+          MentorshipInterests: FsharpTopic list
           MenteeEmailAddress: string
           MentorEmailAddress: string
           AvailableMeetingSessionsInUtc: OverlapSchedule nel }
@@ -34,7 +34,7 @@ module private Implementation =
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
         MenteeAndMentorPair
-            { MentorshipInterest = confirmedMatch.FsharpTopic
+            { MentorshipInterests = confirmedMatch.FsharpTopics
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
               MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
@@ -51,7 +51,7 @@ module private Implementation =
               MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
               MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
               FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
-              FsharpTopic = confirmedMatch.FsharpTopic }
+              FsharpTopics = confirmedMatch.FsharpTopics }
 
     let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =
         meetingTimes
@@ -67,7 +67,7 @@ module private Implementation =
         |> String.concat("\t\t\t")
 
     let formatListOfSharedInterests menteeTokens =
-        menteeTokens.MentorshipInterest
+        menteeTokens.MentorshipInterests
         |> List.map (fun topic -> topic.Name)
         |> String.concat ", "
 

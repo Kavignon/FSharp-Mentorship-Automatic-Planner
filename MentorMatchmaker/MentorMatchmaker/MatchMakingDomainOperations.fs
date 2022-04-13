@@ -176,7 +176,7 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             let confirmedMentorshipMatch =
                 { MatchedMentee = mentee
                   MatchedMentor = mentor
-                  FsharpTopic = potentialMatch.MatchingFsharpInterests
+                  FsharpTopics = potentialMatch.MatchingFsharpInterests
                   CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
                   MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail }
 
@@ -496,7 +496,7 @@ module Matchmaking =
                         [
                             pair.MatchedMentor.MentorInformation.Fullname + $" ({pair.MatchedMentor.MentorInformation.EmailAddress}) ({pair.MatchedMentor.MentorInformation.SlackName})"
                             pair.MatchedMentee.MenteeInformation.Fullname + $" ({pair.MatchedMentee.MenteeInformation.EmailAddress}) ({pair.MatchedMentee.MenteeInformation.SlackName})"
-                            pair.FsharpTopic.Category.CategoryName
+                            pair.FsharpTopics |> List.map (fun topic -> topic.Category.CategoryName) |> List.sort |> String.concat "," 
                             pair.CouldMentorHandleMoreWork.ToString()
                             dumpMeetingTimes pair.MeetingTimes
                         ]

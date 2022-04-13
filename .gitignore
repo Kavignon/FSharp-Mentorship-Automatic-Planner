@@ -192,3 +192,5 @@ paket-files/
 
 # CodeRush
 .cr/
+
+.fake
