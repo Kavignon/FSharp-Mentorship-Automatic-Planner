@@ -68,7 +68,7 @@ let main argv =
         match parsedArguments.GetAllResults() with
         | [] -> Error InputMissing
 
-        | toolMode :: tail ->
+        | toolMode :: _ ->
             match toolMode with
             | CreateMentorshipMatches (csvDocumentPath) ->
                 if String.IsNullOrEmpty csvDocumentPath then

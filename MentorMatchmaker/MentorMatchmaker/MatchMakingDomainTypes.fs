@@ -89,9 +89,6 @@ with
           | "Meta programming" -> MetaProgramming
           | "I am up for anything" | _ -> UpForAnything
 
-
-
-
 type InterestTopic =
     { Category: InterestCategory
       PopularityWeight: PopularityWeight }
@@ -99,6 +96,8 @@ type InterestTopic =
     static member ofCategory c = 
       {Category = c
        PopularityWeight = c.popularity}
+    static member ofString = 
+      InterestCategory.ofString >> InterestTopic.ofCategory 
 
 type Mentor =
     { MentorInformation: PersonInformation
@@ -116,7 +115,7 @@ type Applicants =
 type PotentialMentorshipMatch =
     { Mentor: Mentor
       Mentee: Mentee
-      MatchingFsharpInterests: InterestTopic list }
+      MatchingTopicInterests: InterestTopic list }
 
 type ConfirmedMentorshipApplication =
     { MatchedMentee: Mentee

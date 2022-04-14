@@ -33,24 +33,28 @@ module private Implementation =
     let LengthOfMentorshipInWeeks = 8 // TODO: I need a a way to retrieve it and to make it not static....
 
     let transformIntoMenteeTokens (confirmedMatch: ConfirmedMentorshipApplication) =
+        let menteeInfo = confirmedMatch.MatchedMentee.MenteeInformation
+        let mentorInfo = confirmedMatch.MatchedMentor.MentorInformation
         MenteeAndMentorPair
             { MentorshipInterests = confirmedMatch.InterestTopics
-              MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
-              MenteeFssfSlack = confirmedMatch.MatchedMentee.MenteeInformation.SlackName
-              MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
-              MentorFssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
-              MenteeEmailAddress = confirmedMatch.MatchedMentee.MenteeInformation.EmailAddress
-              MentorEmailAddress = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
+              MenteeFirstName = menteeInfo.FirstName
+              MenteeFssfSlack = menteeInfo.SlackName
+              MentorFirstName = mentorInfo.FirstName
+              MentorFssfSlack = mentorInfo.SlackName
+              MenteeEmailAddress = menteeInfo.EmailAddress
+              MentorEmailAddress = mentorInfo.EmailAddress
               LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
               AvailableMeetingSessionsInUtc = confirmedMatch.MeetingTimes }
 
     let transformIntoMentorTokens (confirmedMatch: ConfirmedMentorshipApplication) =
+        let menteeInfo = confirmedMatch.MatchedMentee.MenteeInformation
+        let mentorInfo = confirmedMatch.MatchedMentor.MentorInformation
         Mentor
-            { MentorFirstName = confirmedMatch.MatchedMentor.MentorInformation.FirstName
+            { MentorFirstName = mentorInfo.FirstName
               LengthOfMentorshipInWeeks = LengthOfMentorshipInWeeks
-              MenteeFirstName = confirmedMatch.MatchedMentee.MenteeInformation.FirstName
-              MentorEmail = confirmedMatch.MatchedMentor.MentorInformation.EmailAddress
-              FssfSlack = confirmedMatch.MatchedMentor.MentorInformation.SlackName
+              MenteeFirstName = menteeInfo.FirstName
+              MentorEmail = mentorInfo.EmailAddress
+              FssfSlack = mentorInfo.SlackName
               InterestTopics = confirmedMatch.InterestTopics }
 
     let dumpMeetingTimes (meetingTimes: OverlapSchedule nel) =

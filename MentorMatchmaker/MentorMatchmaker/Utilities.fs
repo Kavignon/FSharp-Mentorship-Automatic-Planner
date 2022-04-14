@@ -21,6 +21,6 @@ module List =
         |> List.windowed 2
         |> List.map (fun arrayPair -> (arrayPair.[0], arrayPair.[1]))
 
-    let chooseDefault l = l |> List.choose (fun x -> x)
+    let chooseDefault l = l |> List.choose id
 
     let isNotEmpty l = l |> List.isEmpty |> not

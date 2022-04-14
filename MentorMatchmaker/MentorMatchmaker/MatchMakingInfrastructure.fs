@@ -18,28 +18,20 @@ type MentorshipPlannerInputs =
       NumberOfHoursRequiredForOverlap: int }
 
 module private Impl =
-    let availableLocalTimeHoursForMentorship =
-        [ 9 .. 23 ]
-        |> List.map (fun x -> TimeSpan(x, 0, 0))
+    let availableLocalTimeHoursForMentorship = [ 9 .. 23 ] |> List.map (fun x -> TimeSpan(x, 0, 0))
 
     let splitStringAndRemoveDelimiters (stringInput: string) =
         stringInput.Split(',')
         |> List.ofArray
         |> List.map (fun x -> x.Replace(" ", ""))
 
-    let distributeOffsetHoursToSeparateDays
-        (dayOfTheWeekName: string)
-        (availableHoursUtc: TimeSpan list)
-        : DayAvailability list =
+    let distributeOffsetHoursToSeparateDays (dayOfTheWeekName, availableHoursUtc: TimeSpan list) : DayAvailability list =
         let offsetGivenDayByOne (givenDay: DayOfWeek) (isCheckingForNextDay: bool) =
-            if isCheckingForNextDay
-               && givenDay = DayOfWeek.Saturday then
+            if isCheckingForNextDay && givenDay = DayOfWeek.Saturday then
                 DayOfWeek.Sunday
-            elif (not isCheckingForNextDay)
-                 && givenDay = DayOfWeek.Sunday then
+            elif (not isCheckingForNextDay) && givenDay = DayOfWeek.Sunday then
                 DayOfWeek.Saturday
             else
-                let offsetValue = if isCheckingForNextDay then 1 else -1
                 enum<DayOfWeek> (int givenDay + 1)
 
         let convertWeekDayNameInDayOfWeek weekDayName =
@@ -62,58 +54,30 @@ module private Impl =
             { WeekDayName = nextDay.ToString()
               UtcHours = offsetDayMeetingHours }
 
-        let negativeOffsets =
-            availableHoursUtc
-            |> List.filter (fun x -> x.Days < 0)
-
-        let positiveOffsets =
-            availableHoursUtc
-            |> List.filter (fun x -> x.Days >= 1 && x.Hours >= 0)
-
+        let negativeOffsets = availableHoursUtc |> List.filter (fun x -> x.Days < 0)
+        let positiveOffsets = availableHoursUtc |> List.filter (fun x -> x.Days >= 1 && x.Hours >= 0)
+        let setTimespan (x: TimeSpan) = TimeSpan(x.Hours, x.Minutes, x.Seconds)
         match (positiveOffsets, negativeOffsets) with
         | ([], []) ->
             [ { WeekDayName = dayOfTheWeekName
                 UtcHours = availableHoursUtc } ]
-
         | (nextDayHours, []) when nextDayHours.Length > 0 ->
-            let nextDayMeetingHoursWithoutOffset =
-                nextDayHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
-            let currentDayMeetingHours =
-                availableHoursUtc
-                |> List.filter (fun x -> x.Days = 0)
-
+            let nextDayMeetingHoursWithoutOffset = nextDayHours |> List.map setTimespan
+            let currentDayMeetingHours = availableHoursUtc |> List.filter (fun x -> x.Days = 0)
             [ { WeekDayName = dayOfTheWeekName
                 UtcHours = currentDayMeetingHours }
               generateMeetingHoursForOffsetDay nextDayMeetingHoursWithoutOffset true ]
-
         | ([], previousDayHours) when previousDayHours.Length > 0 ->
-            let previousDayMeetingHoursWithoutOffset =
-                previousDayHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
-            let currentDayMeetingHours =
-                availableHoursUtc
-                |> List.filter (fun x -> x.Days = 0)
-
+            let previousDayMeetingHoursWithoutOffset = previousDayHours |> List.map setTimespan
+            let currentDayMeetingHours = availableHoursUtc |> List.filter (fun x -> x.Days = 0)
             [ generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
               { WeekDayName = dayOfTheWeekName
                 UtcHours = currentDayMeetingHours } ]
 
         | (nextDaysHours, previousHours) ->
-            let currentDayMeetingHours =
-                availableHoursUtc
-                |> List.filter (fun x -> x.Days = 0)
-
-            let nextDayMeetingHoursWithoutOffset =
-                nextDaysHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
-            let previousDayMeetingHoursWithoutOffset =
-                previousHours
-                |> List.map (fun x -> TimeSpan(x.Hours, x.Minutes, x.Seconds))
-
+            let currentDayMeetingHours = availableHoursUtc |> List.filter (fun x -> x.Days = 0)
+            let nextDayMeetingHoursWithoutOffset = nextDaysHours |> List.map setTimespan
+            let previousDayMeetingHoursWithoutOffset = previousHours |> List.map setTimespan
             [ generateMeetingHoursForOffsetDay previousDayMeetingHoursWithoutOffset false
               { WeekDayName = dayOfTheWeekName
                 UtcHours = currentDayMeetingHours }
@@ -122,9 +86,9 @@ module private Impl =
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
             if [0..4] |> List.contains(index)  then
-                Some (availableLocalTimeHoursForMentorship |> List.skip (index * 3) |> List.take 3)
+                (availableLocalTimeHoursForMentorship |> List.skip (index * 3) |> List.take 3)
             else
-                None
+                []
         let convertDateAndTimeToAvailability (weekDayAvailability: string) (availabilityIndex: int) =
             let utcOffset =
                 if row.``What is your time zone?``.Equals("UTC") then
@@ -138,41 +102,32 @@ module private Impl =
                             .Replace(" ", "")
                     TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
             if String.IsNullOrEmpty weekDayAvailability then
-                None
+                []
             else
-                let optAvailabilityRange =
-                    convertAvailabilityIndexToTimeRange availabilityIndex
-
+                let optAvailabilityRange = convertAvailabilityIndexToTimeRange availabilityIndex
                 match optAvailabilityRange with
-                | None -> None
-                | Some availabilityRange ->
+                | [] -> []
+                | availabilityRange ->
                     let availableRangeInUtc =
                         availabilityRange
                         |> List.map (fun x -> x.Add(utcOffset))
-
-                    if weekDayAvailability.Contains(',') <> true then
+                    if not (weekDayAvailability.Contains(',')) then
                         (weekDayAvailability, availableRangeInUtc)
-                        ||> distributeOffsetHoursToSeparateDays
-                        |> Some
+                        |> distributeOffsetHoursToSeparateDays
                     else
+                        let getUtc = List.collect (fun x -> x.UtcHours)
                         weekDayAvailability
                         |> splitStringAndRemoveDelimiters
                         |> List.map (fun weekDayName -> (weekDayName, availableRangeInUtc))
-                        |> List.map
-                            (fun (weekDay, hoursInUtc) -> distributeOffsetHoursToSeparateDays weekDay hoursInUtc)
+                        |> List.map distributeOffsetHoursToSeparateDays
                         |> List.concat
                         |> List.groupBy (fun x -> x.WeekDayName)
                         |> List.map
                             (fun (availableDay, availableHours) ->
                                 { WeekDayName = availableDay
-                                  UtcHours =
-                                      availableHours
-                                      |> List.map (fun x -> x.UtcHours)
-                                      |> List.concat })
-                        |> Some
+                                  UtcHours = getUtc availableHours })
 
         // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
-      
 
         let availableDays =
             [ row.``What time are you available? [09:00 - 12:00 local time]``
@@ -181,16 +136,13 @@ module private Impl =
               row.``What time are you available? [18:00 - 21:00 local time]``
               row.``What time are you available? [21:00 - 00:00 local time]`` ]
             |> List.mapi (fun idx dateAndTime -> convertDateAndTimeToAvailability dateAndTime idx)
-            |> List.chooseDefault
             |> List.concat
             |> List.groupBy (fun x -> x.WeekDayName)
             |> List.map
                 (fun (weekDayName, dayAvailabilities) ->
                     let utcHours =
                         dayAvailabilities
-                        |> List.map (fun availableDay -> availableDay.UtcHours)
-                        |> List.concat
-
+                        |> List.collect (fun availableDay -> availableDay.UtcHours)
                     { WeekDayName = weekDayName
                       UtcHours = utcHours })
 
@@ -210,7 +162,7 @@ module private Impl =
             else
                 categoryName.Split(',')
                 |> List.ofArray 
-                |> List.map (InterestCategory.ofString >> InterestTopic.ofCategory)
+                |> List.map InterestTopic.ofString
                 
         if String.IsNullOrEmpty row.``What topic do you want to learn?`` then
             convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
@@ -221,8 +173,7 @@ module private Impl =
         let extractInterestTopics (rows: MentorshipInformation.Row seq) =
             rows
             |> List.ofSeq
-            |> List.map extractInterestTopic
-            |> List.concat
+            |> List.collect extractInterestTopic
             |> NonEmptyList.ofList
         let isText =   String.IsNullOrWhiteSpace >> not
         let mentors =
