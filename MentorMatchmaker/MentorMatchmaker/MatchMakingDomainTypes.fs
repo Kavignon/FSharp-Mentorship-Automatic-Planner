@@ -25,7 +25,12 @@ type PersonInformation =
       MentorshipSchedule: CalendarSchedule }
     member x.FirstName = x.Fullname.Split(' ').[0]
 
-type FSharpCategory =
+type PopularityWeight =
+    | Common = 3
+    | Popular = 5
+    | Rare = 10
+
+type InterestCategory =
     | IntroductionToFSharp
     | DeepDiveInFSharp
     | ContributeToOpenSource
@@ -50,28 +55,59 @@ with
         | DomainModelling -> "Domain modeling"
         | MobileDevelopment -> "Mobile development"
         | MachineLearning -> "Machine learning"
-        | UpForAnything -> "I am up for anything"
         | DesigningWithTypes -> "Designing with types"
         | MetaProgramming -> "Meta programming"
+        | UpForAnything -> "I am up for anything"
+    member x.popularity = 
+        match x with 
+        | IntroductionToFSharp -> PopularityWeight.Common
+        | DeepDiveInFSharp | ContributeToOpenSource | WebDevelopment | DomainModelling  -> PopularityWeight.Popular
+        | _ -> PopularityWeight.Rare
+    static member ofString (c: string) =
+      let c= c.Trim()
+      let inCategory  (keywordList: string) =
+        let splitOptions = StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries  
+        keywordList.Split(";", splitOptions) 
+        |> Array.exists (fun keyword -> c.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
+      if inCategory  "Deep; dive; investment; better;" then DeepDiveInFSharp
+      else if inCategory "Uno; Fabulous; Xamarin; Mobile; Mobile development" then MobileDevelopment
+      else if inCategory "Microservices; Distributed systems; event sourcing" then DistributedSystems
+      else if inCategory "Web;Elmish; Fable; SAFE; Giraffe; React; Feliz; MVC; Web development / SAFE stack;" then WebDevelopment
+      else if inCategory "Contribute to an open source project; open source" then ContributeToOpenSource
+      else
+        match c with
+          | "Introduction to F#" -> IntroductionToFSharp
+          | "Deep dive in F#" -> DeepDiveInFSharp
+          | "Contribute to open-source" -> ContributeToOpenSource
+          | "Contribute to compiler" -> ContributeToCompiler
+          | "Web development" -> WebDevelopment
+          | "Distributed systems" -> DistributedSystems
+          | "Domain modeling" -> DomainModelling
+          | "Mobile development" -> MobileDevelopment
+          | "Machine learning" -> MachineLearning
+          | "Designing with types" -> DesigningWithTypes
+          | "Meta programming" -> MetaProgramming
+          | "I am up for anything" | _ -> UpForAnything
 
-type PopularityWeight =
-    | Common = 3
-    | Popular = 5
-    | Rare = 10
 
-type FsharpTopic =
-    { Category: FSharpCategory
+
+
+type InterestTopic =
+    { Category: InterestCategory
       PopularityWeight: PopularityWeight }
     member x.Name = x.Category.CategoryName
+    static member ofCategory c = 
+      {Category = c
+       PopularityWeight = c.popularity}
 
 type Mentor =
     { MentorInformation: PersonInformation
-      AreasOfExpertise: FsharpTopic nel
-      SimultaneousMenteeCount: uint }
+      AreasOfExpertise: InterestTopic nel
+      SimultaneousMenteeCount: int }
 
 type Mentee =
     { MenteeInformation: PersonInformation
-      TopicsOfInterest: FsharpTopic nel }
+      TopicsOfInterest: InterestTopic nel }
 
 type Applicants =
     { Mentees: Mentee list
@@ -80,59 +116,12 @@ type Applicants =
 type PotentialMentorshipMatch =
     { Mentor: Mentor
       Mentee: Mentee
-      MatchingFsharpInterests: FsharpTopic list }
+      MatchingFsharpInterests: InterestTopic list }
 
 type ConfirmedMentorshipApplication =
     { MatchedMentee: Mentee
       MatchedMentor: Mentor
       CouldMentorHandleMoreWork: bool
-      FsharpTopics: FsharpTopic list
+      InterestTopics: InterestTopic list
       MeetingTimes: OverlapSchedule nel }
 
-let introduction =
-    { Category = IntroductionToFSharp
-      PopularityWeight = PopularityWeight.Common }
-
-let deepDive =
-    { Category = DeepDiveInFSharp
-      PopularityWeight = PopularityWeight.Popular }
-
-let contributeToOSS =
-    { Category = ContributeToOpenSource
-      PopularityWeight = PopularityWeight.Popular }
-
-let webDevelopment =
-    { Category = WebDevelopment
-      PopularityWeight = PopularityWeight.Popular }
-
-let contributeToCompiler =
-    { Category = ContributeToCompiler
-      PopularityWeight = PopularityWeight.Rare }
-
-let machineLearning =
-    { Category = MachineLearning
-      PopularityWeight = PopularityWeight.Rare }
-
-let upForAnything =
-    { Category = UpForAnything
-      PopularityWeight = PopularityWeight.Rare }
-
-let distributedSystems =
-    { Category = DistributedSystems
-      PopularityWeight = PopularityWeight.Rare }
-
-let mobileDevelopment =
-    { Category = MobileDevelopment
-      PopularityWeight = PopularityWeight.Rare }
-
-let domainModeling =
-    { Category = DomainModelling
-      PopularityWeight = PopularityWeight.Popular }
-
-let designingWithTypes =
-    { Category = DesigningWithTypes;
-      PopularityWeight = PopularityWeight.Rare }
-
-let metaProgramming =
-    { Category = MetaProgramming;
-      PopularityWeight = PopularityWeight.Rare }
