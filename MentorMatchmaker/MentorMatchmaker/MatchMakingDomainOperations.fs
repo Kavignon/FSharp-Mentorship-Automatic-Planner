@@ -35,29 +35,28 @@ let doScheduleOverlap menteeSchedule mentorSchedule hoursOfOverlap =
 
     List.exists (fun menteeSchedule -> anySlotBetweenApplicants menteeSchedule hoursOfOverlap) menteeAvailabilities
 
-let extractMatchingFsharpTopics (mentorFsharpTopics: FsharpTopic nel) (menteeFsharpTopics: FsharpTopic nel) =
-    NonEmptyList.intersect mentorFsharpTopics menteeFsharpTopics
+let extractMatchingInterestTopics (mentorInterestTopics: InterestTopic nel) (menteeInterestTopics: InterestTopic nel) =
+    NonEmptyList.intersect mentorInterestTopics menteeInterestTopics
 
 let doesMenteeMatchMentorProfile (mentor: Mentor) (mentee: Mentee) (hoursOfOverlap: int) =
     let foundScheduleOverlap =
-        (mentee.MenteeInformation.MentorshipSchedule, mentor.MentorInformation.MentorshipSchedule, hoursOfOverlap)
-        |||> doScheduleOverlap
+         doScheduleOverlap mentee.MenteeInformation.MentorshipSchedule mentor.MentorInformation.MentorshipSchedule hoursOfOverlap
 
     let hasAnyMatchingInterest =
         (mentor.AreasOfExpertise, mentee.TopicsOfInterest)
-        ||> extractMatchingFsharpTopics
+        ||> extractMatchingInterestTopics
         |> Seq.length > 0
 
     foundScheduleOverlap && hasAnyMatchingInterest
 
-let findAllMatchingMenteesForMentor (mentor: Mentor) (mentees: Mentee list) (hoursOfOverlap: int) =
+let findAllMatchingMenteesForMentor (mentees: Mentee list) (hoursOfOverlap: int) (mentor: Mentor)  =
     mentees
     |> List.filter (fun mentee -> doesMenteeMatchMentorProfile mentor mentee hoursOfOverlap)
     |> List.map
         (fun mentee ->
             { Mentor = mentor
               Mentee = mentee
-              MatchingFsharpInterests = extractMatchingFsharpTopics mentee.TopicsOfInterest mentor.AreasOfExpertise })
+              MatchingFsharpInterests = extractMatchingInterestTopics mentee.TopicsOfInterest mentor.AreasOfExpertise })
 
 let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay =
     let sameAvailableHours =
@@ -75,18 +74,15 @@ let tryFindSameAvailableHoursForApplicants menteeAvailableDay mentorAvailableDay
         Some
             { Weekday = menteeAvailableDay.WeekDayName
               MatchedAvailablePeriods = NonEmptyList.create sameAvailableHours.Head sameAvailableHours.Tail }
+let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
+    let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
+    let availabilitiesList2 = availableDays2 |> NonEmptyList.toList
+    let filterDay day = availabilitiesList2 |> List.exists(fun x -> x.WeekDayName = day.WeekDayName)
+    availabilitiesList1 |> List.filter filterDay
+
 
 // See also 'generateMeetingTimes2'
 let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
-        let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
-        let availabilitiesList2 = availableDays2 |> NonEmptyList.toList
-
-        availabilitiesList1
-        |> List.filter
-            (fun day ->
-                availabilitiesList2
-                |> List.exists (fun x -> x.WeekDayName = day.WeekDayName))
 
     let sortByWeekDayName nonEmptyAvailableDays =
         nonEmptyAvailableDays
@@ -97,59 +93,30 @@ let generateMeetingTimes (mentorSchedule: CalendarSchedule) (menteeSchedule: Cal
         if mentorSchedule.AvailableDays.Length = menteeSchedule.AvailableDays.Length then
             sortByWeekDayName mentorSchedule.AvailableDays, sortByWeekDayName menteeSchedule.AvailableDays
         else
-            let mentorWeekSchedule = (mentorSchedule.AvailableDays, menteeSchedule.AvailableDays) ||> filterForSameWeekDay
-            let menteeWeekSchedule = (menteeSchedule.AvailableDays, mentorSchedule.AvailableDays) ||> filterForSameWeekDay
-            sortByWeekDayName (NonEmptyList.create mentorWeekSchedule.Head mentorWeekSchedule.Tail), sortByWeekDayName (NonEmptyList.create menteeWeekSchedule.Head menteeWeekSchedule.Tail) // List.Head and List.Tail are not safe (throws on empty list)
+            let mentorWeekSchedule = filterForSameWeekDay  mentorSchedule.AvailableDays  menteeSchedule.AvailableDays  
+            let menteeWeekSchedule =  filterForSameWeekDay menteeSchedule.AvailableDays  mentorSchedule.AvailableDays
+            sortByWeekDayName (NonEmptyList.ofList mentorWeekSchedule), sortByWeekDayName (NonEmptyList.ofList menteeWeekSchedule) // List.Head and List.Tail are not safe (throws on empty list)
 
     (mentorAvailableDaysList, menteeAvailableDaysList)
-    ||> List.map2(fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay -> tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
+    ||> List.map2 tryFindSameAvailableHoursForApplicants
     |> List.chooseDefault
 
 
-// Simple copy of 'generateMeetingTimes' to avoid certain flows where 'generateMeetingTimes' throws on empty lists (on List.Head or List.Tail)
-// TODO : Should be refactored and unified again, but tested well so we don't create a regression bug (refactoring delayed for now since we are lacking tests)
-let generateMeetingTimes2 (mentorSchedule: CalendarSchedule) (menteeSchedule: CalendarSchedule) =
-    let filterForSameWeekDay (availableDays1: DayAvailability nel) (availableDays2: DayAvailability nel) =
-        let availabilitiesList1 = availableDays1 |> NonEmptyList.toList
-        let availabilitiesList2 = availableDays2 |> NonEmptyList.toList
 
-        availabilitiesList1 |> List.filter(fun day -> availabilitiesList2 |> List.exists(fun x -> x.WeekDayName = day.WeekDayName))
-
-    let sortByWeekDayName availableDays =
-        availableDays
-        |> List.sortBy(fun x -> x.WeekDayName)
-
-    let mentorAvailableDaysList, menteeAvailableDaysList =
-        if mentorSchedule.AvailableDays.Length = menteeSchedule.AvailableDays.Length then
-            sortByWeekDayName (NonEmptyList.toList mentorSchedule.AvailableDays), sortByWeekDayName (NonEmptyList.toList menteeSchedule.AvailableDays)
-        else
-            let mentorWeekSchedule = (mentorSchedule.AvailableDays, menteeSchedule.AvailableDays) ||> filterForSameWeekDay
-            let menteeWeekSchedule = (menteeSchedule.AvailableDays, mentorSchedule.AvailableDays) ||> filterForSameWeekDay
-            sortByWeekDayName mentorWeekSchedule, sortByWeekDayName menteeWeekSchedule
-
-    (mentorAvailableDaysList, menteeAvailableDaysList)
-    ||> List.map2
-            (fun mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay ->
-                tryFindSameAvailableHoursForApplicants mentorAvailabilitiesOfTheDay menteeAvailabilitiesOfTheDay)
-    |> List.chooseDefault
 
 let canMatchMenteesWithMentors listOfMentors listOfMentees hoursOfOverlap =
-    listOfMentors
-    |> List.exists
-        (fun mentor ->
-            (mentor, listOfMentees, hoursOfOverlap)
-            |||> findAllMatchingMenteesForMentor
-            |> fun matches -> List.isNotEmpty matches)
+    let matches = (findAllMatchingMenteesForMentor listOfMentees hoursOfOverlap) >> List.isNotEmpty
+    listOfMentors |> List.exists matches
 
 let findAllPotentialMentorshipMatches mentors mentees hoursOfOverlap =
     mentors
-    |> List.map (fun mentor -> findAllMatchingMenteesForMentor mentor mentees hoursOfOverlap)
+    |> List.map (findAllMatchingMenteesForMentor mentees hoursOfOverlap)
     |> List.concat
     |> List.map
         (fun mentorshipMatch ->
             let orderedInterestBasedOnPopularity =
                 mentorshipMatch.MatchingFsharpInterests
-                |> List.sortByDescending (fun fsharpTopic -> fsharpTopic.PopularityWeight)
+                |> List.sortByDescending (fun topic -> topic.PopularityWeight)
 
             { mentorshipMatch with
                   MatchingFsharpInterests = orderedInterestBasedOnPopularity })
@@ -176,8 +143,8 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             let confirmedMentorshipMatch =
                 { MatchedMentee = mentee
                   MatchedMentor = mentor
-                  FsharpTopics = potentialMatch.MatchingFsharpInterests
-                  CouldMentorHandleMoreWork = confirmedMatches.Length + 1 = (mentor.SimultaneousMenteeCount |> int)
+                  InterestTopics = potentialMatch.MatchingFsharpInterests
+                  CouldMentorHandleMoreWork = (confirmedMatches.Length + 1 = mentor.SimultaneousMenteeCount)
                   MeetingTimes = NonEmptyList.create sessionHours.Head sessionHours.Tail }
 
             let updatedCollectionPairing =
@@ -209,33 +176,26 @@ let rec createUniqueMentorshipMatches (collectingPairing: CollectingMentorshipPa
             let optMentorWithMatches =
                 collectingPairing.Matches
                 |> Map.tryFind potentialMatch.Mentor
-
+            let simultaneousMenteeCount = potentialMatch.Mentor.SimultaneousMenteeCount 
             match optMentorWithMatches with
-            | Some confirmedMatches when
-                confirmedMatches.Length
-                >= (potentialMatch.Mentor.SimultaneousMenteeCount
-                    |> int)
-                ->
+            | Some confirmedMatches when confirmedMatches.Length >= simultaneousMenteeCount ->
                 createUniqueMentorshipMatches collectingPairing
-
             | Some confirmedMatches ->
-                (potentialMatch, confirmedMatches, collectingPairing.RemainingPotentialMatches)
-                |||> prepareDataForMatching
+                prepareDataForMatching potentialMatch confirmedMatches collectingPairing.RemainingPotentialMatches
                 |> createUniqueMentorshipMatches
-
             | None ->
-                (potentialMatch, [], collectingPairing.RemainingPotentialMatches)
-                |||> prepareDataForMatching
+                prepareDataForMatching potentialMatch [] collectingPairing.RemainingPotentialMatches
                 |> createUniqueMentorshipMatches
 
 let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
     let collectingPairings =
+        let mentors = plannerInputs.Applicants.Mentors
+        let mentees = plannerInputs.Applicants.Mentees
+        let hoursRequired = plannerInputs.NumberOfHoursRequiredForOverlap
         { Matches = Map.empty
           MatchedMentees = plannerInputs.MatchedMenteesSet
           MatchedMentors = plannerInputs.MatchedMentorSet
-          RemainingPotentialMatches =
-              (plannerInputs.Applicants.Mentors, plannerInputs.Applicants.Mentees, plannerInputs.NumberOfHoursRequiredForOverlap)
-              |||> findAllPotentialMentorshipMatches }
+          RemainingPotentialMatches = findAllPotentialMentorshipMatches  mentors mentees hoursRequired}
         |> createUniqueMentorshipMatches
 
     let mentorshipPairings =
@@ -249,11 +209,6 @@ let getConfirmedMatchesFromPlanner (plannerInputs: MentorshipPlannerInputs) =
 
 [<RequireQualifiedAccess>]
 module Matchmaking =
-    open System.IO
-    open System.Linq
-
-    
-    // TODO : Should be private or whatever
     // TODO : Get auth data from somewhere
     let createSmtpClient () =
         let client = new SmtpClient(@"smtp.gmail.com")
@@ -266,13 +221,13 @@ module Matchmaking =
     
         client
 
-    // TODO: Could be fun to imrpove the backend and domain model by discerning between a unmatched and matched applicant. Plus removing this bool would make me feel a lot better.
+    // TODO: Could be fun to improve the backend and domain model by discerning between a unmatched and matched applicant. Plus removing this bool would make me feel a lot better.
     type UnmatchedApplicant =
-        { Name: string
-          EmailAddress: string
-          IsMentor: bool
-          Interests: FsharpTopic nel
-          AvailableDays: DayAvailability nel }
+        {   Name: string
+            EmailAddress: string
+            IsMentor: bool
+            Interests: InterestTopic nel
+            AvailableDays: DayAvailability nel }
 
     let generateUnmatchedApplicantsDump unmatchedApplicants =
         let dumpToFileApplicationData (unmatchedApplicant: UnmatchedApplicant) =
@@ -353,7 +308,7 @@ module Matchmaking =
                     let menteeMatches = 
                         [
                             for mentee in mentees do
-                                let sessionHours = generateMeetingTimes2 { CalendarSchedule.AvailableDays = mentee.AvailableDays } { CalendarSchedule.AvailableDays = mentor.AvailableDays }
+                                let sessionHours = generateMeetingTimes { CalendarSchedule.AvailableDays = mentee.AvailableDays } { CalendarSchedule.AvailableDays = mentor.AvailableDays }
                                 if mentor.EmailAddress <> mentee.EmailAddress && sessionHours.Any() then
                                     Some {| Mentor = mentor; Mentee = mentee; SessionHours = sessionHours |}
                                 else
@@ -422,10 +377,10 @@ module Matchmaking =
                 $"Topics: {interests}\n"
 
                        
-            let renderMentee (mentee: UnmatchedApplicant) ((firstHour :: otherHours): OverlapSchedule list) =
+            let renderMentee (mentee: UnmatchedApplicant) (hours: OverlapSchedule list) =
                 let menteeData = $"\n    Mentee: {mentee.Name} ({mentee.EmailAddress})\n"
                 let menteeInterests = "    " + renderTopics mentee
-                let sessionHours = "        " + dumpMeetingTimes (NonEmptyList.create firstHour otherHours)
+                let sessionHours = "        " + dumpMeetingTimes (NonEmptyList.ofList hours)
 
                 $"\n{menteeData}{menteeInterests}{sessionHours}"
 
@@ -496,7 +451,7 @@ module Matchmaking =
                         [
                             pair.MatchedMentor.MentorInformation.Fullname + $" ({pair.MatchedMentor.MentorInformation.EmailAddress}) ({pair.MatchedMentor.MentorInformation.SlackName})"
                             pair.MatchedMentee.MenteeInformation.Fullname + $" ({pair.MatchedMentee.MenteeInformation.EmailAddress}) ({pair.MatchedMentee.MenteeInformation.SlackName})"
-                            pair.FsharpTopics |> List.map (fun topic -> topic.Category.CategoryName) |> List.sort |> String.concat "," 
+                            pair.InterestTopics |> List.map (fun topic -> topic.Category.CategoryName) |> List.sort |> String.concat "," 
                             pair.CouldMentorHandleMoreWork.ToString()
                             dumpMeetingTimes pair.MeetingTimes
                         ]

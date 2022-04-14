@@ -35,7 +35,7 @@ module private Impl =
             if isCheckingForNextDay
                && givenDay = DayOfWeek.Saturday then
                 DayOfWeek.Sunday
-            elif isCheckingForNextDay <> true
+            elif (not isCheckingForNextDay)
                  && givenDay = DayOfWeek.Sunday then
                 DayOfWeek.Saturday
             else
@@ -121,43 +121,22 @@ module private Impl =
 
     let extractApplicantSchedule (row: MentorshipInformation.Row) =
         let convertAvailabilityIndexToTimeRange index =
-            match index with
-            | 0 ->
-                Some(
-                    availableLocalTimeHoursForMentorship
-                    |> List.take 3
-                )
-            | 1 ->
-                Some(
-                    availableLocalTimeHoursForMentorship
-                    |> List.skip 3
-                    |> List.take 3
-                )
-            | 2 ->
-                Some(
-                    availableLocalTimeHoursForMentorship
-                    |> List.skip 6
-                    |> List.take 3
-                )
-            | 3 ->
-                Some(
-                    availableLocalTimeHoursForMentorship
-                    |> List.skip 9
-                    |> List.take 3
-                )
-            | 4 ->
-                Some(
-                    availableLocalTimeHoursForMentorship
-                    |> List.skip 12
-                    |> List.take 3
-                )
-            | _ -> None
-
-        let convertDateAndTimeToAvailability
-            (weekDayAvailability: string)
-            (availabilityIndex: int)
-            (utcOffsetValue: TimeSpan)
-            =
+            if [0..4] |> List.contains(index)  then
+                Some (availableLocalTimeHoursForMentorship |> List.skip (index * 3) |> List.take 3)
+            else
+                None
+        let convertDateAndTimeToAvailability (weekDayAvailability: string) (availabilityIndex: int) =
+            let utcOffset =
+                if row.``What is your time zone?``.Equals("UTC") then
+                    TimeSpan(0, 0, 0)
+                else
+                    let normalizedUtcValue =
+                        row
+                            .``What is your time zone?``
+                            .Replace("UTC", "")
+                            .Replace("+", "")
+                            .Replace(" ", "")
+                    TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
             if String.IsNullOrEmpty weekDayAvailability then
                 None
             else
@@ -169,7 +148,7 @@ module private Impl =
                 | Some availabilityRange ->
                     let availableRangeInUtc =
                         availabilityRange
-                        |> List.map (fun x -> x.Add(utcOffsetValue))
+                        |> List.map (fun x -> x.Add(utcOffset))
 
                     if weekDayAvailability.Contains(',') <> true then
                         (weekDayAvailability, availableRangeInUtc)
@@ -193,18 +172,7 @@ module private Impl =
                         |> Some
 
         // The timezone, as mentioned in the CSV data, is in fact a UTC offset, not a proper TZ
-        let utcOffset =
-            if row.``What is your time zone?``.Equals("UTC") then
-                TimeSpan(0, 0, 0)
-            else
-                let normalizedUtcValue =
-                    row
-                        .``What is your time zone?``
-                        .Replace("UTC", "")
-                        .Replace("+", "")
-                        .Replace(" ", "")
-
-                TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
+      
 
         let availableDays =
             [ row.``What time are you available? [09:00 - 12:00 local time]``
@@ -212,7 +180,7 @@ module private Impl =
               row.``What time are you available? [15:00 - 18:00 local time]``
               row.``What time are you available? [18:00 - 21:00 local time]``
               row.``What time are you available? [21:00 - 00:00 local time]`` ]
-            |> List.mapi (fun idx dateAndTime -> convertDateAndTimeToAvailability dateAndTime idx utcOffset)
+            |> List.mapi (fun idx dateAndTime -> convertDateAndTimeToAvailability dateAndTime idx)
             |> List.chooseDefault
             |> List.concat
             |> List.groupBy (fun x -> x.WeekDayName)
@@ -234,140 +202,33 @@ module private Impl =
           EmailAddress = row.``Email address``
           MentorshipSchedule = extractApplicantSchedule row }
 
-    let deepDiveInFSharpKeywords =
-        [ "Deep";
-          "dive";
-          "investment";
-          "better" ]
-
-    let mobileDevelopmentKeywords =
-        [ "Uno";
-          "Fabulous";
-          "Xamarin";
-          "Mobile";
-          "Mobile development" ]
-
-    let distributedSystemKeywords =
-        [ "Microservices";
-          "Distributed systems";
-          "event sourcing" ]
-
-    let webDevelopmentKeywords =
-        [ "Web";
-          "Elmish"; 
-          "Fable"; 
-          "SAFE"; 
-          "Giraffe"; 
-          "React"; 
-          "Feliz"; 
-          "MVC"; 
-          "Web development / SAFE stack" ]
-
-    let openSourceKeywords =
-        [ "Contribute to an open source project";
-          "open source" ]
-
-    let extractFsharpTopic (row: MentorshipInformation.Row) =
-        let convertCategoryNameToTopic categoryName =
-            let matchOnStringCategory (stringCategory: string) =
-                let doesCategoryMatchKeyword (categoryName: string) (keywordList: string list) =
-                    keywordList
-                    |> List.exists
-                        (fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
-
-                let category =
-                    if stringCategory.[0] = ' ' then
-                        stringCategory.Substring(1)
-                    else
-                        stringCategory
-
-                if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some introduction
-
-                elif
-                    String.Equals
-                        (
-                            "Contribute to an open source project",
-                            category,
-                            StringComparison.InvariantCultureIgnoreCase
-                        )
-                then
-                    Some contributeToOSS
-
-                elif String.Equals("Machine learning", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some machineLearning
-
-                elif String.Equals("Contribute to the compiler", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some contributeToCompiler
-
-                elif String.Equals("Designing with types", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some designingWithTypes
-                    
-                elif String.Equals("Meta programming", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some metaProgramming
-
-                elif String.Equals("Domain modeling", category, StringComparison.InvariantCultureIgnoreCase) then
-                    Some domainModeling
-
-                elif category.Contains("up for anything", StringComparison.InvariantCultureIgnoreCase) then
-                    Some upForAnything
-                    
-                elif doesCategoryMatchKeyword category openSourceKeywords then
-                    Some contributeToOSS
-
-                elif doesCategoryMatchKeyword category deepDiveInFSharpKeywords then
-                    Some deepDive
-
-                elif doesCategoryMatchKeyword category mobileDevelopmentKeywords then
-                    Some mobileDevelopment
-
-                elif doesCategoryMatchKeyword category distributedSystemKeywords then
-                    Some distributedSystems
-
-                elif doesCategoryMatchKeyword category webDevelopmentKeywords then
-                    Some webDevelopment
-
-                else
-                    None
-
+    
+    let extractInterestTopic (row: MentorshipInformation.Row) =
+        let convertCategoryNameToTopic (categoryName: string)   =
             if String.IsNullOrEmpty categoryName then
-                None
-            elif categoryName.Contains(',') <> true then
-                Some [ matchOnStringCategory categoryName ]
+                []
             else
                 categoryName.Split(',')
-                |> List.ofArray
-                |> List.map
-                    (fun x ->
-                        if x.[0] = ' ' then
-                            x.Substring(1)
-                        else
-                            x)
-                |> List.map (fun x -> matchOnStringCategory x)
-                |> Some
-
+                |> List.ofArray 
+                |> List.map (InterestCategory.ofString >> InterestTopic.ofCategory)
+                
         if String.IsNullOrEmpty row.``What topic do you want to learn?`` then
             convertCategoryNameToTopic row.``What topics do you feel comfortable mentoring?``
         else
             convertCategoryNameToTopic row.``What topic do you want to learn?``
 
     let extractPeopleInformation (mentorshipDocument: MentorshipInformation) =
-        let extractFsharpTopics (rows: MentorshipInformation.Row seq) =
+        let extractInterestTopics (rows: MentorshipInformation.Row seq) =
             rows
             |> List.ofSeq
-            |> List.map extractFsharpTopic
-            |> List.chooseDefault
+            |> List.map extractInterestTopic
             |> List.concat
-            |> List.chooseDefault
             |> NonEmptyList.ofList
-
+        let isText =   String.IsNullOrWhiteSpace >> not
         let mentors =
             mentorshipDocument.Rows
             |> List.ofSeq
-            |> List.filter
-                (fun row ->
-                    String.IsNullOrWhiteSpace(row.``What topics do you feel comfortable mentoring?``)
-                    <> true)
+            |> List.filter (fun row -> isText (row.``What topics do you feel comfortable mentoring?``))
             |> List.groupBy (fun row -> row.``What is your full name (First and Last Name)``)
             |> List.map
                 (fun x ->
@@ -377,28 +238,21 @@ module private Impl =
                     { MentorInformation = extractApplicantInformation mentorData
                       SimultaneousMenteeCount =
                           multipleMentorEntries
-                          |> Seq.filter
-                              (fun x ->
-                                  String.IsNullOrEmpty x.``What topics do you feel comfortable mentoring?``
-                                  <> true)
+                          |> Seq.filter (fun row -> isText (row.``What topics do you feel comfortable mentoring?``))
                           |> Seq.length
-                          |> uint
-                      AreasOfExpertise = extractFsharpTopics multipleMentorEntries })
+                      AreasOfExpertise = extractInterestTopics multipleMentorEntries })
 
         let mentees =
             mentorshipDocument.Rows
             |> List.ofSeq
-            |> List.filter
-                (fun row ->
-                    String.IsNullOrWhiteSpace(row.``What topic do you want to learn?``)
-                    <> true)
+            |> List.filter (fun row -> isText row.``What topic do you want to learn?`` )
             |> List.groupBy (fun row -> row.``What is your full name (First and Last Name)``)
             |> List.map
                 (fun (_, multipleMenteeEntries) ->
                     let menteeData = List.head multipleMenteeEntries
 
                     { MenteeInformation = extractApplicantInformation menteeData
-                      TopicsOfInterest = extractFsharpTopics multipleMenteeEntries })
+                      TopicsOfInterest = extractInterestTopics multipleMenteeEntries })
 
         { Mentors = mentors; Mentees = mentees }
 
