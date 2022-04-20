@@ -1,4 +1,4 @@
-﻿module MentorMatchmaker.Infra
+module MentorMatchmaker.Infra
 
 open System
 
@@ -23,7 +23,7 @@ module private Impl =
         |> List.map (fun x -> TimeSpan(x, 0, 0))
 
     let splitStringAndRemoveDelimiters (stringInput: string) =
-        stringInput.Split([|','; ';'|])
+        stringInput.Split([| ','; ';' |])
         |> List.ofArray
         |> List.map (fun x -> x.Replace(" ", ""))
 
@@ -171,7 +171,7 @@ module private Impl =
                         availabilityRange
                         |> List.map (fun x -> x.Add(utcOffsetValue))
 
-                    if weekDayAvailability.Contains(';') <> true then
+                    if weekDayAvailability.Contains(',') <> true && weekDayAvailability.Contains(';') <> true then
                         (weekDayAvailability, availableRangeInUtc)
                         ||> distributeOffsetHoursToSeparateDays
                         |> Some
