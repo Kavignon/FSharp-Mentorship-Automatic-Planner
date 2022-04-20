@@ -1,4 +1,4 @@
-module MentorMatchmaker.Infra
+﻿module MentorMatchmaker.Infra
 
 open System
 
@@ -203,8 +203,7 @@ module private Impl =
                         .Replace("UTC", "")
                         .Replace("+", "")
                         .Replace(" ", "")
-
-                TimeSpan(Int32.Parse(normalizedUtcValue), 0, 0)
+                TimeSpan(Int32.Parse(normalizedUtcValue) * -1, 0, 0)
 
         let availableDays =
             [ row.``What time are you available? [09:00 - 12:00 local time]``
