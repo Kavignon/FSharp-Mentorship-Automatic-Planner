@@ -10,7 +10,7 @@ open DomainTypes
 
 type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
 
-type MentorshipPlannerInputs = 
+type MentorshipPlannerInputs =
     { Applicants: Applicants
       ConfirmedMatches: ConfirmedMentorshipApplication list
       MatchedMenteesSet: Set<Mentee>
@@ -212,7 +212,7 @@ module private Impl =
               row.``What time are you available? [18:00 - 21:00 local time]``
               row.``What time are you available? [21:00 - 00:00 local time]`` ]
             |> List.mapi (fun idx dateAndTime -> convertDateAndTimeToAvailability dateAndTime idx utcOffset)
-            |> List.chooseDefault
+            |> List.choose id
             |> List.concat
             |> List.groupBy (fun x -> x.WeekDayName)
             |> List.map
@@ -253,13 +253,13 @@ module private Impl =
 
     let webDevelopmentKeywords =
         [ "Web";
-          "Elmish"; 
-          "Fable"; 
-          "SAFE"; 
-          "Giraffe"; 
-          "React"; 
-          "Feliz"; 
-          "MVC"; 
+          "Elmish";
+          "Fable";
+          "SAFE";
+          "Giraffe";
+          "React";
+          "Feliz";
+          "MVC";
           "Web development / SAFE stack" ]
 
     let openSourceKeywords =
@@ -301,7 +301,7 @@ module private Impl =
 
                 elif String.Equals("Designing with types", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some designingWithTypes
-                    
+
                 elif String.Equals("Meta programming", category, StringComparison.InvariantCultureIgnoreCase) then
                     Some metaProgramming
 
@@ -310,7 +310,7 @@ module private Impl =
 
                 elif category.Equals("up for anything", StringComparison.InvariantCultureIgnoreCase) || category.Contains("All of the above", StringComparison.InvariantCultureIgnoreCase) then
                     Some upForAnything
-                    
+
                 elif doesCategoryMatchKeyword category openSourceKeywords then
                     Some contributeToOSS
 
@@ -355,9 +355,9 @@ module private Impl =
             rows
             |> List.ofSeq
             |> List.map extractFsharpTopic
-            |> List.chooseDefault
+            |> List.choose id
             |> List.concat
-            |> List.chooseDefault
+            |> List.choose id
             |> NonEmptyList.ofList
 
         let mentors =
@@ -404,7 +404,7 @@ module private Impl =
 [<RequireQualifiedAccess>]
 module CsvExtractor =
     let extractApplicantsInformation (csvDocumentFilePath: string) =
-        {   
+        {
             Applicants = csvDocumentFilePath |> MentorshipInformation.Load |> Impl.extractPeopleInformation
             ConfirmedMatches = []
             MatchedMenteesSet = Set.empty
