@@ -1,23 +1,7 @@
 ﻿[<AutoOpen>]
 module MentorMatchmaker.Utilities
 
-open System.Linq
-
-open FSharpPlus.Data
-
-type 'T nel = 'T NonEmptyList
-
-[<RequireQualifiedAccess>]
-module NonEmptyList =
-    let intersect (a: _ nel) (b: _ nel) =
-        Enumerable.Intersect(a, b) |> List.ofSeq
-
-[<RequireQualifiedAccess>]
-module List =
-    let intersect (a: _ list) (b: _ list) =
-        Enumerable.Intersect(a, b) |> List.ofSeq
-
-    let isNotEmpty l = l |> List.isEmpty |> not
+open System
 
 [<RequireQualifiedAccess>]
 module Set =
@@ -29,3 +13,17 @@ module Set =
             else
                 set2, set1
         Set.exists (fun item -> Set.contains item biggerSet) smallerSet
+
+let (|RegexGroupValue|_|) pattern text =
+    let m = System.Text.RegularExpressions.Regex.Match(text, pattern)
+    if m.Success && m.Groups.Count > 1 then
+        Some m.Groups[1].Value
+    else
+        None
+
+[<return:Struct>]
+let (|IgnoreCase|_|) other text =
+    if String.Equals(text, other, StringComparison.InvariantCultureIgnoreCase) then
+        ValueSome()
+    else
+        ValueNone

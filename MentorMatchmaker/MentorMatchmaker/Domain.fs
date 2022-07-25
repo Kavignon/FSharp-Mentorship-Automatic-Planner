@@ -19,6 +19,9 @@ type WeekTime = {
 type WeekTimeRange =
     { Start: WeekTime
       End: WeekTime }
+with
+    override this.ToString() =
+        $"{this.Start.Weekday}: {this.Start.Time:ht}-{this.End.Time:ht}"
 
 type PersonalInformation =
     { FullName: string
