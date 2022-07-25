@@ -11,5 +11,3 @@ let ``Set.overlaps returns true if both sets contain a similar item``() =
 [<Test>]
 let ``Set.overlaps returns false if each set has distinct items from the other``() =
     Set.overlaps (Set [1..10]) (Set [11..20]) |> should be False
-
-[<Test>]

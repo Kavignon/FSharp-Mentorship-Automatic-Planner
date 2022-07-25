@@ -53,3 +53,26 @@ type MentorshipPair =
       Mentee: Applicant
       MutualAvailabilities: Set<WeekTime>
       MutualTopics: Set<Topic> }
+
+let toWeekTimeRanges (weekTimes: Set<WeekTime>) =
+    weekTimes
+    |> Seq.sortBy (fun weekTime -> weekTime.Weekday, weekTime.Time)
+    |> Seq.groupBy (fun weekTime -> weekTime.Weekday)
+    |> Seq.collect (fun (weekday, weekTimes) -> seq {
+        use e = weekTimes.GetEnumerator()
+        e.MoveNext() |> ignore
+        let mutable min = e.Current.Time.Hour
+        let mutable previous = e.Current.Time.Hour
+        let mutable current = e.Current.Time.Hour
+        while e.MoveNext() do
+            previous <- current
+            current <- e.Current.Time.Hour
+
+            if current - previous > 1 then
+                yield { Start = { Weekday = weekday; Time = TimeOnly(min, 0, 0) }
+                        End = { Weekday = weekday; Time = TimeOnly(previous, 0, 0) } }
+
+        yield { Start = { Weekday = weekday; Time = TimeOnly(min, 0, 0) }
+                End = { Weekday = weekday; Time = TimeOnly(current, 0, 0) } }
+
+    })
