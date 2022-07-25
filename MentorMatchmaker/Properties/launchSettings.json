@@ -2,7 +2,7 @@
   "profiles": {
     "MentorMatchmaker": {
       "commandName": "Project",
-      "commandLineArgs": "--creatementorshipmatches C:\\src\\FSharp-Mentorship-Automatic-Planner\\MentorMatchmaker\\MentorMatchmaker\\mentorship.csv"
+      "commandLineArgs": "mentorship.csv output --results --email"
     }
   }
 }
