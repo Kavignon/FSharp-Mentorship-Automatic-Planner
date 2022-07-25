@@ -19,8 +19,7 @@ module Functions =
     let generateWeekList (text:string) startHour endHour = [
         let weekdays =
             text.Split([|','; ';'|], TrimEntries ||| RemoveEmptyEntries)
-            |> Array.choose (Option.tryParse<DayOfWeek>)
-            |> Array.toList
+            |> Array.choose Option.tryParse<DayOfWeek>
 
         for weekday in weekdays do
             for hour in startHour .. endHour - 1 do
@@ -170,7 +169,8 @@ module Functions =
 
         result
         |> Result.mapError (fun (InvalidInput(data, message)) ->
-            InvalidInput(data, message + " for applicant: " + row.``What is your full name (First and Last Name)``))
+            InvalidInput(data, message + " for applicant: " + row.``What is your full name (First and Last Name)``)
+        )
 
 let readApplicantPool (stream: System.IO.Stream) : Result<ApplicantPool,InvalidInput> = result {
     use data = MentorshipInformation.Load stream

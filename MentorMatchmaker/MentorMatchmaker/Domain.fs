@@ -2,7 +2,6 @@
 module MentorMatchmaker.Domain
 
 open System
-open MentorMatchmaker
 
 type WeekTime = {
     Weekday: DayOfWeek

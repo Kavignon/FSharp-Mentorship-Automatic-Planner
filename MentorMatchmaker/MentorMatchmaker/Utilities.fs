@@ -35,9 +35,9 @@ let (|IgnoreCase|_|) other text =
 type TimeOnlyJsonConverter() =
     inherit JsonConverter<TimeOnly>()
 
-    override _.Read(reader, typeToConvert, options) =
+    override _.Read(reader, _, _) =
         TimeOnly.Parse(reader.GetString())
 
-    override _.Write(writer, value, options) =
+    override _.Write(writer, value, _) =
         let isoTime = value.ToString("O")
         writer.WriteStringValue(isoTime)
