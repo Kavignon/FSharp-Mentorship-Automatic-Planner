@@ -36,16 +36,10 @@ type private MentorId = int
 type private MenteeId = int
 
 let private toApplicantData id applicant =
-    let weekTimes = Set [
-        for { Start = start; End = end' } in applicant.Availabilities do
-            let mutable currentWeekTime = start
-            yield currentWeekTime
-            while currentWeekTime < end' do
-                currentWeekTime <- currentWeekTime.AddHours(1)
-                yield currentWeekTime
-    ]
-
-    { Id = id; Applicant = applicant; WeekTimes = weekTimes; Topics = applicant.Topics }
+    { Id = id
+      Applicant = applicant
+      WeekTimes = toWeekTimes applicant.Availabilities
+      Topics = applicant.Topics }
 
 type UnpairedApplicants = ApplicantPool
 

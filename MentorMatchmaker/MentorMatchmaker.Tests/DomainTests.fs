@@ -41,8 +41,33 @@ let ``WeekTime.Add decrements from Sunday to Saturday``() =
     { Weekday = Sunday; Time = TimeOnly(0, 0, 0) }.AddHours(-24)
     |> should equal { Weekday = Saturday; Time = TimeOnly(0, 0, 0) }
 
+
 [<Test>]
-let ``Converting a Set of WeekTimes to a Sequence of WeekTimeRange``() =
+let ``Converting a List of WeekTimeRanges to a Set of WeekTimes``() =
+    [
+        { Start = { Weekday = Sunday; Time = TimeOnly(1, 0, 0) }
+          End = { Weekday = Sunday; Time = TimeOnly(3, 0, 0) } }
+        { Start = { Weekday = Monday; Time = TimeOnly(4, 0, 0) }
+          End = { Weekday = Monday; Time = TimeOnly(6, 0, 0) } }
+        { Start = { Weekday = Tuesday; Time = TimeOnly(7, 0, 0) }
+          End = { Weekday = Tuesday; Time = TimeOnly(10, 0, 0) } }
+    ]
+    |> toWeekTimes
+    |> should equivalent [
+        { Weekday = Sunday; Time = TimeOnly(1,0,0) }
+        { Weekday = Sunday; Time = TimeOnly(2,0,0) }
+        { Weekday = Sunday; Time = TimeOnly(3,0,0) }
+        { Weekday = Monday; Time = TimeOnly(4,0,0) }
+        { Weekday = Monday; Time = TimeOnly(5,0,0) }
+        { Weekday = Monday; Time = TimeOnly(6,0,0) }
+        { Weekday = Tuesday; Time = TimeOnly(7,0,0) }
+        { Weekday = Tuesday; Time = TimeOnly(8,0,0) }
+        { Weekday = Tuesday; Time = TimeOnly(9,0,0) }
+        { Weekday = Tuesday; Time = TimeOnly(10,0,0) }
+    ]
+
+[<Test>]
+let ``Converting a Set of WeekTimes to a List of WeekTimeRanges``() =
     Set [
         for i in 1..10 do yield { Weekday = Sunday; Time = TimeOnly(i,0,0) }
         for i in 5..7 do yield { Weekday = Monday; Time = TimeOnly(i,0,0) }

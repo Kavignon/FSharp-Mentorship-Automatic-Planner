@@ -2,6 +2,7 @@
 module MentorMatchmaker.Domain
 
 open System
+open MentorMatchmaker
 
 type WeekTime = {
     Weekday: DayOfWeek
@@ -54,6 +55,16 @@ type MentorshipPair =
       MutualAvailabilities: Set<WeekTime>
       MutualTopics: Set<Topic> }
 
+
+let toWeekTimes (weekTimeRanges: WeekTimeRange list) = Set [
+    for { Start = start; End = end' } in weekTimeRanges do
+        let mutable currentWeekTime = start
+        yield currentWeekTime
+        while currentWeekTime < end' do
+            currentWeekTime <- currentWeekTime.AddHours(1)
+            yield currentWeekTime
+]
+
 let toWeekTimeRanges (weekTimes: Set<WeekTime>) =
     weekTimes
     |> Seq.sortBy (fun weekTime -> weekTime.Weekday, weekTime.Time)
@@ -76,3 +87,4 @@ let toWeekTimeRanges (weekTimes: Set<WeekTime>) =
                 End = { Weekday = weekday; Time = TimeOnly(current, 0, 0) } }
 
     })
+    |> Seq.toList
