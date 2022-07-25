@@ -28,6 +28,7 @@ type PersonalInformation =
       SlackName: string
       EmailAddress: string
       LocalOffset: int }
+    member this.FirstName = this.FullName.Split(' ')[0]
 
 type Topic =
     | IntroductionToFSharp

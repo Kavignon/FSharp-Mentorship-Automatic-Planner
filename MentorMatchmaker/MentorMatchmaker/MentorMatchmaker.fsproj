@@ -6,20 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-<!--    <Compile Include="FileManager.fs" />-->
     <Compile Include="Utilities.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="MatchMaking.fs" />
     <Compile Include="ApplicantInput.fs" />
-<!--    <Compile Include="MatchMakingEmailGeneration.fs" />-->
-<!--    <Compile Include="MatchMakingDomainOperations.fs" />-->
-<!--    <Compile Include="Runner.fs" />-->
-<!--    <Compile Include="Program.fs" />-->
+    <Compile Include="EmailGeneration.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />
-    <PackageReference Include="FSharp.Data" Version="4.2.2" />
+    <PackageReference Include="FSharp.Data" Version="4.2.9" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
     <PackageReference Include="Flips" Version="2.4.8" />
   </ItemGroup>

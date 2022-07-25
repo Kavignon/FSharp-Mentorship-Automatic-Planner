@@ -120,8 +120,8 @@ module Functions =
 
     let getUtcOffset = function
         | "UTC" -> Ok 0
-        | RegexGroupValue "UTC + (\d+)" value -> Ok -(int value)
-        | RegexGroupValue "UTC - (\d+)" value -> Ok (int value)
+        | RegexGroupValue "UTC \+ (\d+)" value -> Ok (int value)
+        | RegexGroupValue "UTC \- (\d+)" value -> Ok -(int value)
         | text -> Error (InvalidInput ("Invalid Parsing UTC Offset", text))
 
     type InputApplicant =
@@ -146,6 +146,7 @@ module Functions =
                     yield! generateWeekList row.``What time are you available? [18:00 - 21:00 local time]`` 18 21
                     yield! generateWeekList row.``What time are you available? [21:00 - 00:00 local time]`` 21 24
                 ]
+                |> Set.map (fun weekTime -> weekTime.AddHours(-offset))
                 |> toWeekTimeRanges
 
             return!
