@@ -24,13 +24,15 @@ module private Implementation =
         | DesigningWithTypes -> "Designing with types"
         | MetaProgramming -> "Meta programming"
 
-    let dumpMeetingTimes (meetingTimes: WeekTimeRange list) =
+    let printLocalMeetingTimes offset (meetingTimes: Set<WeekTime>) =
         meetingTimes
+        |> Set.map (fun time -> time.AddHours(offset))
+        |> toWeekTimeRanges
         |> Seq.groupBy (fun weekTimeRange -> weekTimeRange.Start.Weekday)
         |> Seq.map (fun (weekday, weekTimeRanges) ->
             let aggregatedTimes =
                 weekTimeRanges
-                |> Seq.map (fun range -> range.Start.Time.ToShortTimeString() + "-" + range.End.Time.ToShortTimeString())
+                |> Seq.map (fun range -> range.Start.Time.ToShortTimeString() + "-" + range.End.Time.AddHours(1).ToShortTimeString())
                 |> String.concat ", "
 
             $"{weekday}: {aggregatedTimes}<br>"
@@ -42,9 +44,13 @@ module private Implementation =
         |> Seq.map topicName
         |> String.concat ", "
 
+    let possessive (name:string) = name + (if name[name.Length - 1] = 's' then "'" else "'s")
+
     let generateMenteeMentorEmail { Mentor = mentor; Mentee = mentee; MutualTopics = topics; MutualAvailabilities = availabilities } =
+        let mentor = mentor.PersonalInformation
+        let mentee = mentee.PersonalInformation
         $"
-Hello {mentor.PersonalInformation.FirstName} and {mentee.PersonalInformation.FirstName},<br><br>
+Hello {mentor.FirstName} and {mentee.FirstName},<br><br>
 
 Congratulations! You have been selected to participate in this round of the F# Software Foundation’s Mentorship Program.<br><br>
 
@@ -56,23 +62,27 @@ Feel free to take it from here.<br><br>
 
 <b>Mentee Details</b><br><br>
 
-Mentee FSSF Slack username: {mentee.PersonalInformation.SlackName}<br>
-Mentor FSSF Slack username: {mentor.PersonalInformation.SlackName}<br><br>
+Mentee FSSF Slack username: {mentee.SlackName}<br>
+Mentor FSSF Slack username: {mentor.SlackName}<br><br>
 
-<b>Possible meeting sessions (in UTC)</b><br><br>
-{availabilities |> toWeekTimeRanges |> dumpMeetingTimes}<br><br>
+<b>Possible meeting sessions ({possessive mentee.FirstName} local time)</b><br><br>
+{printLocalMeetingTimes mentee.LocalOffset availabilities}<br><br>
+
+<b>Possible meeting sessions ({possessive mentor.FirstName} local time)</b><br><br>
+{printLocalMeetingTimes mentor.LocalOffset availabilities}<br><br>
 
 Thank you, and happy learning!<br><br>
 
 F# Software Foundation Mentorship Program<br><br>
 
-Mentor email: {mentor.PersonalInformation.EmailAddress}<br><br>
-Mentee email: {mentee.PersonalInformation.EmailAddress}<br><br>
-        "
+Mentor email: {mentor.EmailAddress}<br><br>
+Mentee email: {mentee.EmailAddress}<br><br>
+"
 
     let generateMentorEmail {Mentor = mentor} =
+        let mentor = mentor.PersonalInformation
         $"
-Hello {mentor.PersonalInformation.FirstName},<br><br>
+Hello {mentor.FirstName},<br><br>
 
 Thank you so much for volunteering to be a mentor!<br><br>
 
@@ -92,14 +102,16 @@ for additional learning resources that you would like to share with your learner
 
 6. To ease facilitation for us and being able to help early, please add \"mentorship@fsharp.org\" in CC of your first e-mail or press \"reply all\" to our introduction email which will follow shortly.
 
-Mentor email: {mentor.PersonalInformation.EmailAddress}
-        "
+Mentor email: {mentor.EmailAddress}
+"
 
 let sendEmailToPairedApplicants (smtpClient: SmtpClient) (mentorshipPair: MentorshipPair) =
+    let mentor = mentorshipPair.Mentor.PersonalInformation
+    let mentee = mentorshipPair.Mentee.PersonalInformation
     use menteeMailMessage =
         new MailMessage(
             "mentorship@fsharp.org",
-            mentorshipPair.Mentee.PersonalInformation.EmailAddress + "," + mentorshipPair.Mentor.PersonalInformation.EmailAddress,
+            mentee.EmailAddress + "," + mentor.EmailAddress,
             @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
             generateMenteeMentorEmail mentorshipPair)
 
@@ -110,7 +122,7 @@ let sendEmailToPairedApplicants (smtpClient: SmtpClient) (mentorshipPair: Mentor
     use mentorMailMessage =
         new MailMessage(
             "mentorship@fsharp.org",
-            mentorshipPair.Mentor.PersonalInformation.EmailAddress,
+            mentor.EmailAddress,
             @"FSSF Mentorship Program: Get started as a mentor",
             generateMentorEmail mentorshipPair)
 
@@ -123,7 +135,7 @@ let generateEmailExamples (matches: MentorshipPair list) =
     |> List.collect (fun mentorshipPair ->
         [ generateMenteeMentorEmail mentorshipPair
           generateMentorEmail mentorshipPair ])
-    |> String.concat "/n"
+    |> String.concat "\n"
 
 let createSmtpClient (password:string) =
     let client = new SmtpClient(@"smtp.gmail.com")
