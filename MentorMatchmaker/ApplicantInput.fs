@@ -109,10 +109,8 @@ module Functions =
 
         if String.IsNullOrEmpty topicText then
             Error (InvalidInput(topicText, "No topics were found"))
-        elif topicText.Contains(',') <> true then
-            Ok (Set [ matchOnTopicText topicText ])
         else
-            topicText.Split(',', StringSplitOptions.TrimEntries ||| StringSplitOptions.RemoveEmptyEntries)
+            topicText.Split([|','; ';'|], StringSplitOptions.TrimEntries ||| StringSplitOptions.RemoveEmptyEntries)
             |> Array.map matchOnTopicText
             |> Set
             |> Ok
