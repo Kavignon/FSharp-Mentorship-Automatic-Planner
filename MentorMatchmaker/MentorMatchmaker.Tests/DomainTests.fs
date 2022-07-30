@@ -47,23 +47,32 @@ let ``Converting a List of WeekTimeRanges to a Set of WeekTimes``() =
     [
         { Start = { Weekday = Sunday; Time = TimeOnly(1, 0, 0) }
           End = { Weekday = Sunday; Time = TimeOnly(3, 0, 0) } }
+
         { Start = { Weekday = Monday; Time = TimeOnly(4, 0, 0) }
           End = { Weekday = Monday; Time = TimeOnly(6, 0, 0) } }
+
         { Start = { Weekday = Tuesday; Time = TimeOnly(7, 0, 0) }
           End = { Weekday = Tuesday; Time = TimeOnly(10, 0, 0) } }
+
+        { Start = { Weekday = Wednesday; Time = TimeOnly(12, 0, 0) }
+          End = { Weekday = Wednesday; Time = TimeOnly(12, 0, 0) } }
     ]
     |> toWeekTimes
     |> should equivalent [
         { Weekday = Sunday; Time = TimeOnly(1,0,0) }
         { Weekday = Sunday; Time = TimeOnly(2,0,0) }
         { Weekday = Sunday; Time = TimeOnly(3,0,0) }
+
         { Weekday = Monday; Time = TimeOnly(4,0,0) }
         { Weekday = Monday; Time = TimeOnly(5,0,0) }
         { Weekday = Monday; Time = TimeOnly(6,0,0) }
+
         { Weekday = Tuesday; Time = TimeOnly(7,0,0) }
         { Weekday = Tuesday; Time = TimeOnly(8,0,0) }
         { Weekday = Tuesday; Time = TimeOnly(9,0,0) }
         { Weekday = Tuesday; Time = TimeOnly(10,0,0) }
+
+        { Weekday = Wednesday; Time = TimeOnly(12,0,0) }
     ]
 
 [<Test>]
@@ -72,6 +81,7 @@ let ``Converting a Set of WeekTimes to a List of WeekTimeRanges``() =
         for i in 1..10 do yield { Weekday = Sunday; Time = TimeOnly(i,0,0) }
         for i in 5..7 do yield { Weekday = Monday; Time = TimeOnly(i,0,0) }
         for i in 13..23 do yield { Weekday = Tuesday; Time = TimeOnly(i,0,0) }
+        for i in 12..12 do yield { Weekday = Wednesday; Time = TimeOnly(i,0,0) }
         // Intentional Duplicate Sunday
         for i in 11..15 do yield { Weekday = Sunday; Time = TimeOnly(i,0,0) }
     ]
@@ -79,8 +89,13 @@ let ``Converting a Set of WeekTimes to a List of WeekTimeRanges``() =
     |> should equivalent [
         { Start = { Weekday = Sunday; Time = TimeOnly(1, 0, 0) }
           End = { Weekday = Sunday; Time = TimeOnly(15, 0, 0) } }
+
         { Start = { Weekday = Monday; Time = TimeOnly(5, 0, 0) }
           End = { Weekday = Monday; Time = TimeOnly(7, 0, 0) } }
+
         { Start = { Weekday = Tuesday; Time = TimeOnly(13, 0, 0) }
           End = { Weekday = Tuesday; Time = TimeOnly(23, 0, 0) } }
+
+        { Start = { Weekday = Wednesday; Time = TimeOnly(12, 0, 0) }
+          End = { Weekday = Wednesday; Time = TimeOnly(12, 0, 0) } }
     ]
