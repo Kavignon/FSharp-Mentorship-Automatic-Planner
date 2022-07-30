@@ -19,13 +19,13 @@ their programming skills and learn the best practices in F#.
 
 ## Usage
 In order to use the *Mentorship Planner*, ensure that you have [Git] and
-the [.NET 5.0 SDK] installed. Then run the following commands in your
+the [.NET 6.0 SDK] installed. Then run the following commands in your
 shell:
 
 ```
 git clone https://github.com/Kavignon/FSharp-Mentorship-Automatic-Planner.git
 cd FSharp-Mentorship-Automatic-Planner/MentorMatchmaker/MentorMatchmaker
-dotnet run --creatementorshipmatches mentorship_data_file.csv
+dotnet run mentorship_data_file.csv output --results
 ```
 
 The program creates two files containing:
@@ -41,7 +41,7 @@ you should use the [`mentorship_schema_file.csv`] as a starting point.
 
 ### Columns
 *Timestamp*<br>
-The date at wich the application was received (e.g. `9/7/2020 21:47`)
+The date at which the application was received (e.g. `9/7/2020 21:47`)
 
 *Email Address*<br>
 The email address of the applicant
@@ -108,5 +108,5 @@ Web, Elmish, Fable, SAFE, Giraffe, React, Feliz, MVC
 [F# Software Foundation]: https://fsharp.org/
 [mentorship program]: https://fsharp.org/mentorship/
 [Git]: https://www.git-scm.com/
-[.NET 5.0 SDK]: https://dotnet.microsoft.com/download
-[`mentorship_schema_file.csv`]: MentorMatchmaker/MentorMatchmaker/mentorship_schema_file.csv
+[.NET 6.0 SDK]: https://dotnet.microsoft.com/download
+[`mentorship_schema_file.csv`]: MentorMatchmaker/mentorship_schema_file.csv
