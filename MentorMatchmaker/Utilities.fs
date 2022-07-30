@@ -2,7 +2,6 @@
 module MentorMatchmaker.Utilities
 
 open System
-open System.Text.Json.Serialization
 
 [<RequireQualifiedAccess>]
 module Set =
@@ -29,15 +28,7 @@ let (|IgnoreCase|_|) other text =
     else
         ValueNone
 
-// Coming to .NET 7
-// https://github.com/maxkoshevoi/DateOnlyTimeOnly.AspNet/blob/d239472270aaac83196a2ce1d701e60e3af670b9/DateOnlyTimeOnly.AspNet/Converters/Json/TimeOnlyJsonConverter.cs#L6
-[<Sealed>]
-type TimeOnlyJsonConverter() =
-    inherit JsonConverter<TimeOnly>()
-
-    override _.Read(reader, _, _) =
-        TimeOnly.Parse(reader.GetString())
-
-    override _.Write(writer, value, _) =
-        let isoTime = value.ToString("O")
-        writer.WriteStringValue(isoTime)
+let (|Positive|Negative|Zero|) n =
+    if n > 0 then Positive n
+    elif n < 0 then Negative n
+    else Zero

@@ -105,8 +105,25 @@ let main argv =
                 for { Mentor = mentor; Mentee = mentee; MutualTopics = topics; MutualAvailabilities = availabilities} in pairs do
                     fprintf writer $"  {fullName mentor} | {fullName mentee}: "
                     fprintfn writer "[ %s ]" (String.Join("; ", topics))
-                    fprintfn writer "    Mentor Times: { %s }" (String.Join("; ", availabilities |> Seq.map (fun a -> a.AddHours(mentor.PersonalInformation.LocalOffset)) |> Set.ofSeq |> toWeekTimeRanges |> Seq.map (fun range -> $"{range.Start.Weekday}: {range.Start.Time:hht}-{range.End.Time:hht}")))
-                    fprintfn writer "    Mentee Times: { %s }" (String.Join("; ", availabilities |> Seq.map (fun a -> a.AddHours(mentee.PersonalInformation.LocalOffset)) |> Set.ofSeq |> toWeekTimeRanges |> Seq.map (fun range -> $"{range.Start.Weekday}: {range.Start.Time:hht}-{range.End.Time:hht}")))
+                    let offsetUtcLabel = function
+                        | Zero -> "UTC"
+                        | Positive n -> $"UTC + {n}"
+                        | Negative n -> $"UTC - {n * -1}"
+
+                    let toLocalPrintedRanges offset (weektimes:Set<WeekTime>) =
+                        weektimes
+                        |> Set.map (fun a -> a.AddHours(offset))
+                        |> toWeekTimeRanges
+                        |> Seq.map (fun range -> $"{range.Start.Weekday}: {range.Start.Time:hht}-{range.End.Time:hht}")
+                        |> String.concat "; "
+
+                    fprintfn writer "    Mentor Times: (%s) { %s }"
+                        (offsetUtcLabel mentor.PersonalInformation.LocalOffset)
+                        (toLocalPrintedRanges mentor.PersonalInformation.LocalOffset availabilities)
+
+                    fprintfn writer "    Mentee Times: (%s) { %s }"
+                        (offsetUtcLabel mentee.PersonalInformation.LocalOffset)
+                        (toLocalPrintedRanges mentee.PersonalInformation.LocalOffset availabilities)
 
                 writer.WriteLine()
 
