@@ -5,6 +5,12 @@
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
+  <!-- Currently Added as a link by the Flips NuGet package -->
+  <ItemGroup>
+    <None Visible="false" Include="MipCL213WrapperCpp.dll" />
+    <None Visible="false" Include="Scip70WrapperCpp.dll" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Include="Utilities.fs" />
     <Compile Include="Domain.fs" />
