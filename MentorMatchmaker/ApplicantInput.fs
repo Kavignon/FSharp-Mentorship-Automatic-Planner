@@ -135,7 +135,7 @@ module Functions =
                   EmailAddress = row.``Email address``
                   LocalOffset = offset }
 
-            let availabilites =
+            let availabilities =
                 Set [
                     yield! generateWeekList row.``What time are you available? [09:00 - 12:00 local time]`` 9 12
                     yield! generateWeekList row.``What time are you available? [12:00 - 15:00 local time]`` 12 15
@@ -153,14 +153,14 @@ module Functions =
                     return Mentor({
                         PersonalInformation = applicantInfo
                         Topics = topics
-                        Availabilities = availabilites
+                        Availabilities = availabilities
                     })}
                 | IgnoreCase "mentee" -> result {
                     let! topics = convertTextToTopic row.``What topic do you want to learn?``
                     return Mentee({
                         PersonalInformation = applicantInfo
                         Topics = topics
-                        Availabilities = availabilites
+                        Availabilities = availabilities
                     })}
                 | other -> Error(InvalidInput (other, $"'{nameof(row.``I want to be a``)}' column was not correct"))
         }
