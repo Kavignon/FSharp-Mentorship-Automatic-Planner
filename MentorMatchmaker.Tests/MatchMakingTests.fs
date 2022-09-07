@@ -79,10 +79,11 @@ module Generate =
           Topics = Set [ topic ] }
 
 module SUT =
-    let matchApplicants = MatchMaking.matchApplicants >> toTestModel
-    let applicantMatches = MatchMaking.matchApplicants >> toTestModel >> fun { Pairs = pairs } -> pairs
-    let applicantsUnmatched = MatchMaking.matchApplicants >> toTestModel >> fun { NotPaired = notPaired } -> notPaired
-    let matchApplicantNames = MatchMaking.matchApplicants >> toTestNames
+    let private getOk = function | Ok value -> value | Error error-> failwith $"Unit Test MatchMaking Failed: {error}"
+    let matchApplicants = MatchMaking.matchApplicants >> getOk >> toTestModel
+    let applicantMatches = MatchMaking.matchApplicants >> getOk >> toTestModel >> fun { Pairs = pairs } -> pairs
+    let applicantsUnmatched = MatchMaking.matchApplicants >> getOk >> toTestModel >> fun { NotPaired = notPaired } -> notPaired
+    let matchApplicantNames = MatchMaking.matchApplicants >> getOk >> toTestNames
 
 // Mentor{x} is intended to match with Mentee{y} where x = y
 let mentor1 = Generate.applicant "Mentor1" Sunday IntroductionToFSharp

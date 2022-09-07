@@ -71,7 +71,7 @@ let main argv =
             |> Result.mapError (fun (ApplicantInput.InvalidInput (invalidInput, message)) ->
                 $"Input Parsing Error: {invalidInput}; {message}")
 
-        let pairs, unpaired = MatchMaking.matchApplicants applicantPool
+        let! pairs, unpaired = MatchMaking.matchApplicants applicantPool
 
         if mainParsedCommands.Contains Email then
             let parser = mainParsedCommands.GetResult Email

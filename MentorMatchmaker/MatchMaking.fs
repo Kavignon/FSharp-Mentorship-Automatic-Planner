@@ -54,7 +54,7 @@ let private toApplicantData id applicant =
 
 type UnpairedApplicants = ApplicantPool
 
-let matchApplicants (applicantPool:ApplicantPool) : MentorshipPair list * UnpairedApplicants =
+let matchApplicants (applicantPool:ApplicantPool) : Result<MentorshipPair list * UnpairedApplicants, string> =
     let mentors, mentees =
         let mutable i = 0
         ( [ for mentor in applicantPool.Mentors do toApplicantData i mentor; i <- i + 1 ],
@@ -141,5 +141,10 @@ let matchApplicants (applicantPool:ApplicantPool) : MentorshipPair list * Unpair
             ]
         }
 
-        pairs, unmatchedApplicants
-    | other -> failwith (sprintf "%A" other)
+        Ok (pairs, unmatchedApplicants)
+    | Infeasible message ->
+        Error $"Matchmaking Error (Infeasible): {message}"
+    | Unbounded message ->
+        Error $"Matchmaking Error (Unbounded): {message}"
+    | Unknown message ->
+        Error $"Matchmaking Error (Unknown): {message}"
