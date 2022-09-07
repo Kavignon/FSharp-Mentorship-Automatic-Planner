@@ -12,7 +12,11 @@ type WeekTime = {
         if dayOffset = 0 then
             { this with Time = time }
         else
-            let weekday = ((int this.Weekday + dayOffset) % 7 + 7) % 7 |> enum<DayOfWeek>
+            let weekday =
+                let weekdayNumber = int this.Weekday
+                // Adding 7 so that negative numbers will still become positive 0-6
+                let newWeekdayNumber = ((weekdayNumber + dayOffset) % 7 + 7) % 7
+                enum<DayOfWeek> newWeekdayNumber
             { this with Time = time; Weekday = weekday }
 
 type WeekTimeRange =
@@ -57,7 +61,6 @@ type MentorshipPair =
       Mentee: Applicant
       MutualAvailabilities: Set<WeekTime>
       MutualTopics: Set<Topic> }
-
 
 let toWeekTimes (weekTimeRanges: WeekTimeRange list) = Set [
     for { Start = start; End = end' } in weekTimeRanges do

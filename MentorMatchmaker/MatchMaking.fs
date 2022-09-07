@@ -5,6 +5,17 @@ open Flips
 open Flips.Types
 open Flips.SliceMap
 
+(*
+
+MatchMaking is done using linear programming by creating:
+    * A list of decisions (mentor/mentee pair) an algorithm can turn on or off
+    * An objective  (create as many pairs as possible with the rarest topics)
+        an algorithm watches to get as high as possible
+    * Constraints on pairings (do not allow mentors or mentees to be matched up more than once)
+        an algorithm is not allowed to exceed
+
+*)
+
 let private toTopicWeight topic : float =
     let Anything = 1
     let Common = 3
