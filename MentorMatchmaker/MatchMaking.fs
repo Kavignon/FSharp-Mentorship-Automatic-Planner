@@ -57,14 +57,21 @@ type UnpairedApplicants = ApplicantPool
 let matchApplicants (applicantPool:ApplicantPool) : Result<MentorshipPair list * UnpairedApplicants, string> =
     let mentors, mentees =
         let mutable i = 0
-        ( [ for mentor in applicantPool.Mentors do toApplicantData i mentor; i <- i + 1 ],
-          [ for mentee in applicantPool.Mentees do toApplicantData i mentee; i <- i + 1 ] )
+        ( [ for mentor in applicantPool.Mentors do
+                yield toApplicantData i mentor
+                i <- i + 1 ],
+          [ for mentee in applicantPool.Mentees do
+                yield toApplicantData i mentee
+                i <- i + 1 ] )
 
     let matchablePairs = [
         for mentor in mentors do
             for mentee in mentees do
-                if (Set.overlaps mentor.Topics mentee.Topics || mentor.Topics.Contains UpForAnything || mentee.Topics.Contains UpForAnything)
-                   && Set.overlaps mentor.WeekTimes mentee.WeekTimes then
+                if (Set.overlaps mentor.Topics mentee.Topics ||
+                    mentor.Topics.Contains UpForAnything ||
+                    mentee.Topics.Contains UpForAnything)
+                   && Set.overlaps mentor.WeekTimes mentee.WeekTimes
+                then
                     yield mentor, mentee
     ]
 
@@ -106,26 +113,28 @@ let matchApplicants (applicantPool:ApplicantPool) : Result<MentorshipPair list *
         let mentorMenteeMap = Map [
             for mentor in mentors do
                 for mentee in mentees do
-                    mentorMenteeKey mentor mentee, (mentor, mentee)
+                    yield mentorMenteeKey mentor mentee, (mentor, mentee)
         ]
 
         let matches = [
             for KeyValue({ Name = DecisionName name }, value) in result.DecisionResults do
                 if value > 0 then
-                    Map.find name mentorMenteeMap
+                    yield Map.find name mentorMenteeMap
         ]
 
-        let matchedMentorIds = Set [ for mentor, _ in matches do mentor.Id ]
-        let matchedMenteeIds = Set [ for _, mentee in matches do mentee.Id ]
+        let matchedMentorIds =
+            Set [ for mentor, _ in matches do yield mentor.Id ]
+        let matchedMenteeIds =
+            Set [ for _, mentee in matches do yield mentee.Id ]
 
         let pairs : MentorshipPair list = [
             for mentor, mentee in matches do
-            yield {
-                Mentor = mentor.Applicant
-                Mentee = mentee.Applicant
-                MutualAvailabilities = Set.intersect mentor.WeekTimes mentee.WeekTimes
-                MutualTopics = combineTopics mentor.Topics mentee.Topics
-            }
+                yield {
+                    Mentor = mentor.Applicant
+                    Mentee = mentee.Applicant
+                    MutualAvailabilities = Set.intersect mentor.WeekTimes mentee.WeekTimes
+                    MutualTopics = combineTopics mentor.Topics mentee.Topics
+                }
         ]
 
         let unmatchedApplicants : UnpairedApplicants = {
