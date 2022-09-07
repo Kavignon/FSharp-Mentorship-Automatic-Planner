@@ -60,17 +60,16 @@ let main argv =
     let mainParsedCommands = mainArgParser.ParseCommandLine(argv)
 
     result {
-        let! applicantPool = result {
-            let csvPath = mainParsedCommands.GetResult Input
-            if not (System.IO.File.Exists(csvPath)) then
-                return! Error $"File missing: {csvPath}"
+        let csvPath = mainParsedCommands.GetResult Input
+        if not (System.IO.File.Exists(csvPath)) then
+            return! Error $"File missing: {csvPath}"
 
-            use stream = File.OpenRead csvPath
+        use stream = File.OpenRead csvPath
 
-            return! ApplicantInput.readApplicantPool stream
+        let! applicantPool =
+            ApplicantInput.readApplicantPool stream
             |> Result.mapError (fun (ApplicantInput.InvalidInput (invalidInput, message)) ->
                 $"Input Parsing Error: {invalidInput}; {message}")
-        }
 
         let pairs, unpaired = MatchMaking.matchApplicants applicantPool
 
