@@ -65,44 +65,40 @@ module Functions =
                 keywordList
                 |> List.exists
                     (fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
-            let category =
-                if topicText[0] = ' ' then
-                    topicText.Substring(1)
-                else
-                    topicText
-            if String.Equals("Introduction to F#", category, StringComparison.InvariantCultureIgnoreCase)
-               || category.Contains("beginner", StringComparison.InvariantCultureIgnoreCase)  then
+
+            if String.Equals("Introduction to F#", topicText, StringComparison.InvariantCultureIgnoreCase)
+               || topicText.Contains("beginner", StringComparison.InvariantCultureIgnoreCase)  then
                 IntroductionToFSharp
             elif
                 String.Equals
                     (
                         "Contribute to an open source project",
-                        category,
+                        topicText,
                         StringComparison.InvariantCultureIgnoreCase
                     )
             then
                 ContributeToOpenSource
-            elif String.Equals("Machine learning", category, StringComparison.InvariantCultureIgnoreCase) then
+            elif String.Equals("Machine learning", topicText, StringComparison.InvariantCultureIgnoreCase) then
                 MachineLearning
-            elif String.Equals("Contribute to the compiler", category, StringComparison.InvariantCultureIgnoreCase) then
+            elif String.Equals("Contribute to the compiler", topicText, StringComparison.InvariantCultureIgnoreCase) then
                 ContributeToCompiler
-            elif String.Equals("Designing with types", category, StringComparison.InvariantCultureIgnoreCase) then
+            elif String.Equals("Designing with types", topicText, StringComparison.InvariantCultureIgnoreCase) then
                 DesigningWithTypes
-            elif String.Equals("Meta programming", category, StringComparison.InvariantCultureIgnoreCase) then
+            elif String.Equals("Meta programming", topicText, StringComparison.InvariantCultureIgnoreCase) then
                 MetaProgramming
-            elif String.Equals("Domain modeling", category, StringComparison.InvariantCultureIgnoreCase) then
+            elif String.Equals("Domain modeling", topicText, StringComparison.InvariantCultureIgnoreCase) then
                 DomainModelling
-            elif category.Equals("up for anything", StringComparison.InvariantCultureIgnoreCase) || category.Contains("All of the above", StringComparison.InvariantCultureIgnoreCase) then
+            elif topicText.Equals("up for anything", StringComparison.InvariantCultureIgnoreCase) || topicText.Contains("All of the above", StringComparison.InvariantCultureIgnoreCase) then
                 UpForAnything
-            elif doesCategoryMatchKeyword category openSourceKeywords then
+            elif doesCategoryMatchKeyword topicText openSourceKeywords then
                 ContributeToOpenSource
-            elif doesCategoryMatchKeyword category deepDiveInFSharpKeywords then
+            elif doesCategoryMatchKeyword topicText deepDiveInFSharpKeywords then
                 DeepDiveInFSharp
-            elif doesCategoryMatchKeyword category mobileDevelopmentKeywords then
+            elif doesCategoryMatchKeyword topicText mobileDevelopmentKeywords then
                 MobileDevelopment
-            elif doesCategoryMatchKeyword category distributedSystemKeywords then
+            elif doesCategoryMatchKeyword topicText distributedSystemKeywords then
                 DistributedSystems
-            elif doesCategoryMatchKeyword category webDevelopmentKeywords then
+            elif doesCategoryMatchKeyword topicText webDevelopmentKeywords then
                 WebDevelopment
             else
                 UpForAnything
@@ -110,8 +106,8 @@ module Functions =
         if String.IsNullOrEmpty topicText then
             Error (InvalidInput(topicText, "No topics were found"))
         else
-            topicText.Split([|','; ';'|], StringSplitOptions.TrimEntries ||| StringSplitOptions.RemoveEmptyEntries)
-            |> Array.map matchOnTopicText
+            topicText.Split([|','; ';'|], TrimEntries ||| RemoveEmptyEntries)
+            |> Seq.map matchOnTopicText
             |> Set
             |> Ok
 
