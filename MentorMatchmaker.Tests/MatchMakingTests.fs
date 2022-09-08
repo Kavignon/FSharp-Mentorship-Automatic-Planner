@@ -6,6 +6,8 @@ open type DayOfWeek
 open NUnit.Framework
 open FsUnit
 
+// MentorName and MenteeName could also be ApplicantName, just useful to make it more clear in these
+// Unit Test types what is supposed to be a pair of Mentor/Mentee Names
 type MentorName = string
 type MenteeName = string
 type ApplicantName = string
