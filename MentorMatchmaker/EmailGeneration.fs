@@ -110,23 +110,21 @@ let sendEmailToPairedApplicants (smtpClient: SmtpClient) (mentorshipPair: Mentor
     let mentee = mentorshipPair.Mentee.PersonalInformation
     use menteeMailMessage =
         new MailMessage(
-            "mentorship@fsharp.org",
-            mentee.EmailAddress + "," + mentor.EmailAddress,
-            @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
-            generateMenteeMentorEmail mentorshipPair)
-
-    menteeMailMessage.IsBodyHtml <- true
+            from = "mentorship@fsharp.org",
+            ``to`` = mentee.EmailAddress + "," + mentor.EmailAddress,
+            subject = @"FSSF Mentorship Program: Congratulations and meet your mentorship partner",
+            body = generateMenteeMentorEmail mentorshipPair,
+            IsBodyHtml = true)
 
     smtpClient.Send menteeMailMessage
 
     use mentorMailMessage =
         new MailMessage(
-            "mentorship@fsharp.org",
-            mentor.EmailAddress,
-            @"FSSF Mentorship Program: Get started as a mentor",
-            generateMentorEmail mentorshipPair)
-
-    mentorMailMessage.IsBodyHtml <- true
+            from = "mentorship@fsharp.org",
+            ``to`` = mentor.EmailAddress,
+            subject = @"FSSF Mentorship Program: Get started as a mentor",
+            body = generateMentorEmail mentorshipPair,
+            IsBodyHtml = true)
 
     smtpClient.Send mentorMailMessage
 
@@ -138,12 +136,10 @@ let generateEmailExamples (matches: MentorshipPair list) =
     |> String.concat "\n"
 
 let createSmtpClient (password:string) =
-    let client = new SmtpClient(@"smtp.gmail.com")
-
-    client.UseDefaultCredentials <- false
-    client.EnableSsl <- true
-    client.Port <- 587
-    client.Credentials <- System.Net.NetworkCredential("mentorship@fsharp.org", password)
-    client.DeliveryMethod <- SmtpDeliveryMethod.Network
-
-    client
+    new SmtpClient(
+        host = @"smtp.gmail.com",
+        UseDefaultCredentials = false,
+        EnableSsl = true,
+        Port = 587,
+        Credentials = System.Net.NetworkCredential("mentorship@fsharp.org", password),
+        DeliveryMethod = SmtpDeliveryMethod.Network)
