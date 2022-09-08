@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Currently Added as a link by the Flips NuGet package, this will hide them -->
+  <ItemGroup>
+    <None Visible="false" Include="MipCL213WrapperCpp.dll" />
+    <None Visible="false" Include="Scip70WrapperCpp.dll" />
+  </ItemGroup>
+  
+  <!-- Suppressing Nuget Warnings Caused by the Flips NuGet package -->
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="6.0.5" />
+    <!-- Would have been transitive but Flips currently requires a dependency on 
+         Google.OrTools that doesn't support .NET 6 (this version does). 
+         Bringing this in as a Top Level Dependency still works and will suppress warnings for Google.OrTools -->
+    <PackageReference Include="Google.OrTools" Version="9.4.1874" NoWarn="NU1608" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Utilities.fs" />
+    <Compile Include="Domain.fs" />
+    <Compile Include="MatchMaking.fs" />
+    <Compile Include="ApplicantInput.fs" />
+    <Compile Include="EmailGeneration.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Argu" Version="6.1.1" />
+    <PackageReference Include="FSharp.Data" Version="4.2.9" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
+    <PackageReference Include="Flips" Version="2.4.8" />
+  </ItemGroup>
+</Project>
