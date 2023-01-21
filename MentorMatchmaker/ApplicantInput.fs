@@ -16,12 +16,13 @@ type InvalidInput = InvalidInput of invalidInput:string * message:string
 [<AutoOpen>]
 module Functions =
 
-    let generateWeekList (weekdayArray:string array) startHour endHour = [
-        let weekdays = weekdayArray |> Array.choose Option.tryParse<DayOfWeek>
-
+    let generateWeekList (weekdays:string array) startHour endHour = [
         for weekday in weekdays do
-            for hour in startHour .. endHour - 1 do
-                yield { Weekday = weekday; Time = TimeOnly(hour, 0, 0) }
+            match DayOfWeek.TryParse(weekday, ignoreCase=true) with
+            | true, weekday -> 
+                for hour in startHour .. endHour - 1 do
+                    yield { Weekday = weekday; Time = TimeOnly(hour, 0, 0) }
+            | false, _ -> ()
     ]
 
     let convertTextToTopics topicsText =
