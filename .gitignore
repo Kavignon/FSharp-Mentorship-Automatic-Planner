@@ -455,8 +455,8 @@ $RECYCLE.BIN/
 
 # Project Specific Files
 # Ignore CSVs that might be added to the root to test the mentorship program
-*.csv
-!mentorship_schema_file.csv
+*.json
+!mentorship_schema_file.json
 
 # F# Flips Nuget Package Downloaded dlls
 MipCL213WrapperCpp.dll
