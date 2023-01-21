@@ -59,11 +59,16 @@ module Functions =
 
     let rowToInputApplicant (info: MentorshipInformation.Root) : Result<InputApplicantType,_> =
         let result = result {
+            let! utcOffset =
+                if -12 <= info.UtcOffset && info.UtcOffset <= 12 then
+                    Ok info.UtcOffset
+                else
+                    Error (InvalidInput("utc_offset", "UTC Offset invalid Range"))
             let applicantInfo =
                 { FullName = info.Name
                   SlackName = ""
                   EmailAddress = info.Email
-                  LocalOffset = info.UtcOffset }
+                  LocalOffset = utcOffset }
 
             let availabilities =
                 Set [
@@ -76,7 +81,7 @@ module Functions =
                     yield! generateWeekList info.Schedule6Pm 18 21
                     yield! generateWeekList info.Schedule9Pm 21 24
                 ]
-                |> Set.map (fun weekTime -> weekTime.AddHours(-info.UtcOffset))
+                |> Set.map (fun weekTime -> weekTime.AddHours(-utcOffset))
                 |> toWeekTimeRanges
 
             return!
