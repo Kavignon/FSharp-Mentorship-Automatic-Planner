@@ -14,13 +14,6 @@ module Set =
                 set2, set1
         Set.exists (fun item -> Set.contains item biggerSet) smallerSet
 
-let (|RegexGroupValue|_|) pattern text =
-    let m = System.Text.RegularExpressions.Regex.Match(text, pattern)
-    if m.Success && m.Groups.Count > 1 then
-        Some m.Groups[1].Value
-    else
-        None
-
 [<return:Struct>]
 let (|IgnoreCase|_|) other text =
     if String.Equals(text, other, StringComparison.InvariantCultureIgnoreCase) then

@@ -16,13 +16,13 @@ module private Implementation =
         | ContributeToOpenSource -> "Contribute to open-source"
         | ContributeToCompiler -> "Contribute to compiler"
         | WebDevelopment -> "Web development"
-        | DistributedSystems -> "Distributed systems"
         | DomainModelling -> "Domain modeling"
         | MobileDevelopment -> "Mobile development"
         | MachineLearning -> "Machine learning"
         | UpForAnything -> "I am up for anything"
-        | DesigningWithTypes -> "Designing with types"
         | MetaProgramming -> "Meta programming"
+        | GameDevelopment -> "Game Development"
+        | Devops -> "Devops / Scripting"
 
     let printLocalMeetingTimes offset (meetingTimes: Set<WeekTime>) =
         meetingTimes
@@ -64,6 +64,9 @@ Feel free to take it from here.<br><br>
 
 Mentee FSSF Slack username: {mentee.SlackName}<br>
 Mentor FSSF Slack username: {mentor.SlackName}<br><br>
+
+Mentee Discord username: {mentee.DiscordName}<br>
+Mentor Discord username: {mentor.DiscordName}<br><br>
 
 <b>Possible meeting sessions ({possessive mentee.FirstName} local time)</b><br><br>
 {printLocalMeetingTimes mentee.LocalOffset availabilities}<br><br>

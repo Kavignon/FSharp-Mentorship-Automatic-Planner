@@ -28,6 +28,13 @@
     <Compile Include="EmailGeneration.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="mentorship.json"
+             Condition="'$(Configuration)' == 'Debug'"
+             Visible="false"
+             CopyToOutputDirectory="Always" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />

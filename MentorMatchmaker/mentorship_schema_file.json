@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Applicant Name",
+    "email": "mentor@example.com",
+    "applicant_type": "mentor",
+    "slack_name": "@applicant",
+    "discord_name": "applicant#1234",
+    "topics": [
+      "intro",
+      "deep_div",
+      "web",
+      "ml",
+      "game_dev",
+      "scripting",
+      "open_source",
+      "compiler",
+      "up_for_anything"
+    ],
+    "utc_offset": "-3",
+    "schedule_9_am": [
+      "sunday"
+    ],
+    "schedule_12_pm": [
+      "monday"
+    ],
+    "schedule_3_pm": [
+      "tuesday"
+    ],
+    "schedule_6_pm": [
+      "wednesday"
+    ],
+    "schedule_9_pm": [
+      "thursday"
+    ],
+    "schedule_12_am": [
+      "friday"
+    ],
+    "schedule_3_am": [
+      "saturday"
+    ],
+    "schedule_6_am": [
+      "friday"
+    ]
+  }
+]
