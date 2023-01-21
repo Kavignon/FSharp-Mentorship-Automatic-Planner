@@ -53,11 +53,11 @@ module Functions =
         else
             Error (InvalidInput ("topics", String.concat "\n" errors))
 
-    type InputApplicant =
+    type InputApplicantType =
         | Mentor of Applicant
         | Mentee of Applicant
 
-    let rowToInputApplicant (info: MentorshipInformation.Root) : Result<InputApplicant,_> =
+    let rowToInputApplicant (info: MentorshipInformation.Root) : Result<InputApplicantType,_> =
         let result = result {
             let applicantInfo =
                 { FullName = info.Name
