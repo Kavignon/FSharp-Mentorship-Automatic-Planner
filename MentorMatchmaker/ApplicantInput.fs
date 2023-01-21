@@ -42,7 +42,7 @@ module Functions =
             | "meta" -> okCollector.Add MetaProgramming
             | "domain_modelling" -> okCollector.Add DomainModelling
             | "up_for_anything" -> okCollector.Add UpForAnything
-            | other -> errorCollector.Add "Missing Topic: {other}"
+            | other -> errorCollector.Add $"Missing Topic: {other}"
             
         let oks = okCollector.Close()
         let errors = errorCollector.Close()
