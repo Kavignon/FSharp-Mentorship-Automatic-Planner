@@ -3,6 +3,8 @@
     "name": "Applicant Name",
     "email": "mentor@example.com",
     "applicant_type": "mentor",
+    "slack_name": "@applicant",
+    "discord_name": "applicant#1234",
     "topics": [
       "intro",
       "deep_div",

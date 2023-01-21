@@ -29,6 +29,7 @@ with
 type PersonalInformation =
     { FullName: string
       SlackName: string
+      DiscordName: string
       EmailAddress: string
       LocalOffset: int }
     member this.FirstName = this.FullName.Split(' ')[0]

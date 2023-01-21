@@ -66,7 +66,8 @@ module Functions =
                     Error (InvalidInput("utc_offset", "UTC Offset invalid Range"))
             let applicantInfo =
                 { FullName = info.Name
-                  SlackName = ""
+                  SlackName = info.SlackName
+                  DiscordName = info.DiscordName
                   EmailAddress = info.Email
                   LocalOffset = utcOffset }
 

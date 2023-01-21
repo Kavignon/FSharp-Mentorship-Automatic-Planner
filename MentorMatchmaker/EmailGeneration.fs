@@ -65,6 +65,9 @@ Feel free to take it from here.<br><br>
 Mentee FSSF Slack username: {mentee.SlackName}<br>
 Mentor FSSF Slack username: {mentor.SlackName}<br><br>
 
+Mentee Discord username: {mentee.DiscordName}<br>
+Mentor Discord username: {mentor.DiscordName}<br><br>
+
 <b>Possible meeting sessions ({possessive mentee.FirstName} local time)</b><br><br>
 {printLocalMeetingTimes mentee.LocalOffset availabilities}<br><br>
 
