@@ -27,21 +27,21 @@ type OutputArgs =
 
 [<CliPrefix(CliPrefix.None)>]
 type CliArgument =
-    | [<MainCommand;ExactlyOnce;First>] Input of csvDocumentPath: string
+    | [<MainCommand;ExactlyOnce;First>] Input of jsonDocumentPath: string
     | [<Last>]Output of ParseResults<OutputArgs>
     | [<Last>]Email of ParseResults<EmailArgs>
 with
     interface IArgParserTemplate with
         member cliArg.Usage =
             match cliArg with
-            | Input _ -> "Provide relative path the CSV document containing the current's round information with all the applicant's data."
+            | Input _ -> "Provide relative path the JSON document containing the current's round information with all the applicant's data."
             | Email _ -> "Send emails out to applicants. Password required with the -p|--password flag. Output can be checked with the Output command"
             | Output _ -> "Write the output of the mentorship pairings to stdout"
 
 [<EntryPoint>]
 let main argv =
-    // Don't forget to provide the current CSV document for the mentorship.
-    // Please leave the CSV document out of the repository. It's been excluded in the git ignore.
+    // Don't forget to provide the current JSON document for the mentorship.
+    // Please leave the JSON document out of the repository. It's been excluded in the git ignore.
     // Don 't commit the file in the repository.
 
     let mainArgParser =
@@ -60,11 +60,11 @@ let main argv =
     let mainParsedCommands = mainArgParser.ParseCommandLine(argv)
 
     result {
-        let csvPath = mainParsedCommands.GetResult Input
-        if not (System.IO.File.Exists(csvPath)) then
-            return! Error $"File missing: {csvPath}"
+        let jsonPath = mainParsedCommands.GetResult Input
+        if not (System.IO.File.Exists(jsonPath)) then
+            return! Error $"File missing: {jsonPath}"
 
-        use stream = File.OpenRead csvPath
+        use stream = File.OpenRead jsonPath
 
         let! applicantPool =
             ApplicantInput.readApplicantPool stream

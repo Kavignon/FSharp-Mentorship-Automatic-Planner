@@ -29,12 +29,12 @@ let private toTopicWeight topic : float =
     | WebDevelopment -> Popular
     | ContributeToCompiler -> Rare
     | MachineLearning -> Rare
-    | DistributedSystems -> Rare
     | MobileDevelopment -> Rare
     | DomainModelling -> Popular
     | UpForAnything -> Anything
-    | DesigningWithTypes -> Rare
     | MetaProgramming -> Rare
+    | GameDevelopment -> Rare
+    | Devops -> Rare
 
 type private ApplicantData = {
     Id: int

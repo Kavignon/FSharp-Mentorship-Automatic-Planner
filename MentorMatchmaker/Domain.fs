@@ -40,12 +40,12 @@ type Topic =
     | WebDevelopment
     | ContributeToCompiler
     | MachineLearning
-    | DistributedSystems
     | MobileDevelopment
     | DomainModelling
     | UpForAnything
-    | DesigningWithTypes
     | MetaProgramming
+    | GameDevelopment
+    | Devops
 
 type Applicant =
     { PersonalInformation: PersonalInformation

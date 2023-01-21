@@ -10,170 +10,108 @@ open MentorMatchmaker
 open Microsoft.FSharp.Core.CompilerServices
 open FsToolkit.ErrorHandling
 
-type MentorshipInformation = CsvProvider<"mentorship_schema_file.csv">
+type MentorshipInformation = JsonProvider<"mentorship_schema_file.json">
 type InvalidInput = InvalidInput of invalidInput:string * message:string
 
 [<AutoOpen>]
 module Functions =
 
-    let generateWeekList (text:string) startHour endHour = [
-        let weekdays =
-            text.Split([|','; ';'|], TrimEntries ||| RemoveEmptyEntries)
-            |> Array.choose Option.tryParse<DayOfWeek>
+    let generateWeekList (weekdayArray:string array) startHour endHour = [
+        let weekdays = weekdayArray |> Array.choose Option.tryParse<DayOfWeek>
 
         for weekday in weekdays do
             for hour in startHour .. endHour - 1 do
                 yield { Weekday = weekday; Time = TimeOnly(hour, 0, 0) }
     ]
 
-    let convertTextToTopic topicText =
-        let deepDiveInFSharpKeywords =
-            [ "Deep";
-              "dive";
-              "investment";
-              "better" ]
-
-        let mobileDevelopmentKeywords =
-            [ "Uno";
-              "Fabulous";
-              "Xamarin";
-              "Mobile";
-              "Mobile development" ]
-
-        let distributedSystemKeywords =
-            [ "Microservices";
-              "Distributed systems";
-              "event sourcing" ]
-
-        let webDevelopmentKeywords =
-            [ "Web";
-              "Elmish";
-              "Fable";
-              "SAFE";
-              "Giraffe";
-              "React";
-              "Feliz";
-              "MVC";
-              "Web development / SAFE stack" ]
-
-        let openSourceKeywords =
-            [ "Contribute to an open source project";
-              "open source" ]
-
-        let matchOnTopicText (topicText: string) =
-            let doesCategoryMatchKeyword (categoryName: string) (keywordList: string list) =
-                keywordList
-                |> List.exists
-                    (fun keyword -> categoryName.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
-
-            if String.Equals("Introduction to F#", topicText, StringComparison.InvariantCultureIgnoreCase)
-               || topicText.Contains("beginner", StringComparison.InvariantCultureIgnoreCase)  then
-                IntroductionToFSharp
-            elif
-                String.Equals
-                    (
-                        "Contribute to an open source project",
-                        topicText,
-                        StringComparison.InvariantCultureIgnoreCase
-                    )
-            then
-                ContributeToOpenSource
-            elif String.Equals("Machine learning", topicText, StringComparison.InvariantCultureIgnoreCase) then
-                MachineLearning
-            elif String.Equals("Contribute to the compiler", topicText, StringComparison.InvariantCultureIgnoreCase) then
-                ContributeToCompiler
-            elif String.Equals("Designing with types", topicText, StringComparison.InvariantCultureIgnoreCase) then
-                DesigningWithTypes
-            elif String.Equals("Meta programming", topicText, StringComparison.InvariantCultureIgnoreCase) then
-                MetaProgramming
-            elif String.Equals("Domain modeling", topicText, StringComparison.InvariantCultureIgnoreCase) then
-                DomainModelling
-            elif topicText.Equals("up for anything", StringComparison.InvariantCultureIgnoreCase) || topicText.Contains("All of the above", StringComparison.InvariantCultureIgnoreCase) then
-                UpForAnything
-            elif doesCategoryMatchKeyword topicText openSourceKeywords then
-                ContributeToOpenSource
-            elif doesCategoryMatchKeyword topicText deepDiveInFSharpKeywords then
-                DeepDiveInFSharp
-            elif doesCategoryMatchKeyword topicText mobileDevelopmentKeywords then
-                MobileDevelopment
-            elif doesCategoryMatchKeyword topicText distributedSystemKeywords then
-                DistributedSystems
-            elif doesCategoryMatchKeyword topicText webDevelopmentKeywords then
-                WebDevelopment
-            else
-                UpForAnything
-
-        if String.IsNullOrEmpty topicText then
-            Error (InvalidInput(topicText, "No topics were found"))
+    let convertTextToTopics topicsText =
+        let mutable okCollector = ListCollector()
+        let mutable errorCollector = ListCollector()
+        
+        for topicText in topicsText do
+            match topicText with
+            | "intro" -> okCollector.Add IntroductionToFSharp
+            | "deep_dive" -> okCollector.Add DeepDiveInFSharp
+            | "web" -> okCollector.Add WebDevelopment
+            | "ml" -> okCollector.Add MachineLearning
+            | "game_dev" -> okCollector.Add GameDevelopment
+            | "devops" -> okCollector.Add Devops
+            | "open_source" -> okCollector.Add ContributeToOpenSource
+            | "compiler" -> okCollector.Add ContributeToCompiler
+            | "mobile" -> okCollector.Add MobileDevelopment
+            | "meta" -> okCollector.Add MetaProgramming
+            | "domain_modelling" -> okCollector.Add DomainModelling
+            | "up_for_anything" -> okCollector.Add UpForAnything
+            | other -> errorCollector.Add "Missing Topic: {other}"
+            
+        let oks = okCollector.Close()
+        let errors = errorCollector.Close()
+            
+        if errors.IsEmpty then
+            Ok oks
         else
-            topicText.Split([|','; ';'|], TrimEntries ||| RemoveEmptyEntries)
-            |> Seq.map matchOnTopicText
-            |> Set
-            |> Ok
-
-    let getUtcOffset = function
-        | "UTC" -> Ok 0
-        | RegexGroupValue "UTC \+ (\d+)" value -> Ok (int value)
-        | RegexGroupValue "UTC \- (\d+)" value -> Ok -(int value)
-        | text -> Error (InvalidInput ("Invalid Parsing UTC Offset", text))
+            Error (InvalidInput ("topics", String.concat "\n" errors))
 
     type InputApplicant =
         | Mentor of Applicant
         | Mentee of Applicant
 
-    let rowToInputApplicant (row: MentorshipInformation.Row) : Result<InputApplicant,_> =
+    let rowToInputApplicant (info: MentorshipInformation.Root) : Result<InputApplicant,_> =
         let result = result {
-            let! offset = getUtcOffset row.``What is your time zone?``
-
             let applicantInfo =
-                { FullName = row.``What is your full name (First and Last Name)``
-                  SlackName = row.``What is your fsharp.org slack name?``
-                  EmailAddress = row.``Email address``
-                  LocalOffset = offset }
+                { FullName = info.Name
+                  SlackName = ""
+                  EmailAddress = info.Email
+                  LocalOffset = info.UtcOffset }
 
             let availabilities =
                 Set [
-                    yield! generateWeekList row.``What time are you available? [09:00 - 12:00 local time]`` 9 12
-                    yield! generateWeekList row.``What time are you available? [12:00 - 15:00 local time]`` 12 15
-                    yield! generateWeekList row.``What time are you available? [15:00 - 18:00 local time]`` 15 18
-                    yield! generateWeekList row.``What time are you available? [18:00 - 21:00 local time]`` 18 21
-                    yield! generateWeekList row.``What time are you available? [21:00 - 00:00 local time]`` 21 24
+                    yield! generateWeekList info.Schedule12Am 0 3
+                    yield! generateWeekList info.Schedule3Am 3 6
+                    yield! generateWeekList info.Schedule6Am 6 9
+                    yield! generateWeekList info.Schedule9Am 9 12
+                    yield! generateWeekList info.Schedule12Pm 12 15
+                    yield! generateWeekList info.Schedule3Pm 15 18
+                    yield! generateWeekList info.Schedule6Pm 18 21
+                    yield! generateWeekList info.Schedule9Pm 21 24
                 ]
-                |> Set.map (fun weekTime -> weekTime.AddHours(-offset))
+                |> Set.map (fun weekTime -> weekTime.AddHours(-info.UtcOffset))
                 |> toWeekTimeRanges
 
             return!
-                match row.``I want to be a`` with
+                match info.ApplicantType with
                 | IgnoreCase "mentor" -> result {
-                    let! topics = convertTextToTopic row.``What topics do you feel comfortable mentoring?``
+                    let! topics =
+                        convertTextToTopics info.Topics
                     return Mentor({
                         PersonalInformation = applicantInfo
-                        Topics = topics
+                        Topics = Set topics
                         Availabilities = availabilities
                     })}
                 | IgnoreCase "mentee" -> result {
-                    let! topics = convertTextToTopic row.``What topic do you want to learn?``
+                    let! topics =
+                        convertTextToTopics info.Topics
                     return Mentee({
                         PersonalInformation = applicantInfo
-                        Topics = topics
+                        Topics = Set topics
                         Availabilities = availabilities
                     })}
-                | other -> Error(InvalidInput (other, $"'{nameof(row.``I want to be a``)}' column was not correct"))
+                | other -> Error(InvalidInput (other, $"'{nameof(info.ApplicantType)}' column was not correct"))
         }
 
         result
         |> Result.mapError (fun (InvalidInput(data, message)) ->
-            InvalidInput(data, message + " for applicant: " + row.``What is your full name (First and Last Name)``)
+            InvalidInput(data, message + " for applicant: " + info.Name)
         )
 
 let readApplicantPool (stream: System.IO.Stream) : Result<ApplicantPool,InvalidInput> = result {
-    use data = MentorshipInformation.Load stream
+    let data = MentorshipInformation.Load stream
 
     let mutable mentors = ListCollector()
     let mutable mentees = ListCollector()
 
-    for row in data.Rows do
-        match! rowToInputApplicant row with
+    for root in data do
+        match! rowToInputApplicant root with
         | Mentor applicant -> mentors.Add(applicant)
         | Mentee applicant -> mentees.Add(applicant)
 

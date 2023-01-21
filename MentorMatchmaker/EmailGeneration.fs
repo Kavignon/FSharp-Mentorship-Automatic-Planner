@@ -16,13 +16,13 @@ module private Implementation =
         | ContributeToOpenSource -> "Contribute to open-source"
         | ContributeToCompiler -> "Contribute to compiler"
         | WebDevelopment -> "Web development"
-        | DistributedSystems -> "Distributed systems"
         | DomainModelling -> "Domain modeling"
         | MobileDevelopment -> "Mobile development"
         | MachineLearning -> "Machine learning"
         | UpForAnything -> "I am up for anything"
-        | DesigningWithTypes -> "Designing with types"
         | MetaProgramming -> "Meta programming"
+        | GameDevelopment -> "Game Development"
+        | Devops -> "Devops / Scripting"
 
     let printLocalMeetingTimes offset (meetingTimes: Set<WeekTime>) =
         meetingTimes
